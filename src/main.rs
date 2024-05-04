@@ -199,7 +199,7 @@ async fn main() {
         IndexerOptions {
             range: if std::env::args().len() > 1 {
                 // For debugging
-                let msg = "Usage: `price-indexer` or `price-indexer [start-block] [end-block]`";
+                let msg = "Usage: `trade-indexer` or `trade-indexer [start-block] [end-block]`";
                 BlockIterator::iterator(
                     std::env::args()
                         .nth(1)
