@@ -2,7 +2,8 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 use inindexer::{
-    fastnear_data_server::FastNearDataServerProvider, near_indexer_primitives::types::AccountId,
+    fastnear_data_server::FastNearDataServerProvider,
+    near_indexer_primitives::types::{AccountId, BlockHeight},
     run_indexer, BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
 };
 
@@ -38,7 +39,7 @@ async fn detects_ref_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool) {}
+        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
     }
 
     let handler = TestHandler {
@@ -147,7 +148,7 @@ async fn detects_ref_multistep_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool) {}
+        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
     }
 
     let handler = TestHandler {
@@ -306,7 +307,7 @@ async fn detects_ref_dragonbot_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool) {}
+        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
     }
 
     let handler = TestHandler {
@@ -427,7 +428,7 @@ async fn detects_ref_arbitrage_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool) {}
+        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
     }
 
     let handler = TestHandler {
@@ -629,7 +630,7 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool) {}
+        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
     }
 
     let handler = TestHandler {
@@ -697,7 +698,7 @@ async fn doesnt_detect_failed_ref_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool) {}
+        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
     }
 
     let handler = TestHandler {
@@ -765,7 +766,7 @@ async fn detects_delegate_ref_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool) {}
+        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
     }
 
     let handler = TestHandler {
@@ -914,7 +915,7 @@ async fn detects_ref_state_changes() {
         ) {
         }
 
-        async fn on_pool_change(&mut self, pool: &Pool) {
+        async fn on_pool_change(&mut self, pool: &Pool, _height: BlockHeight) {
             self.state_changes
                 .entry(pool.id.clone())
                 .or_default()
