@@ -140,6 +140,7 @@ pub async fn detect(
         let context = TradeContext {
             trader,
             block_height: block.block.header.height,
+            block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
             txid: transaction.transaction.transaction.hash,
         };
         for raw_pool_swap in raw_pool_swaps.iter() {

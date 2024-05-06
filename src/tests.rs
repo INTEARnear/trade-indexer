@@ -81,6 +81,7 @@ async fn detects_ref_trades() {
             TradeContext {
                 trader: "skyto.near".parse().unwrap(),
                 block_height: 118210091,
+                block_timestamp_nanosec: 1714804406674985128,
                 txid: "E4okfxk1x6GdXA5YAwZpzyAqBnnXfo5XfKxj6cMF62Ky"
                     .parse()
                     .unwrap(),
@@ -113,6 +114,7 @@ async fn detects_ref_trades() {
             TradeContext {
                 trader: "skyto.near".parse().unwrap(),
                 block_height: 118210091,
+                block_timestamp_nanosec: 1714804406674985128,
                 txid: "E4okfxk1x6GdXA5YAwZpzyAqBnnXfo5XfKxj6cMF62Ky"
                     .parse()
                     .unwrap(),
@@ -191,6 +193,7 @@ async fn detects_ref_multistep_trades() {
                 TradeContext {
                     trader: "williamxx.near".parse().unwrap(),
                     block_height: 118214456,
+                    block_timestamp_nanosec: 1714810103667818241,
                     txid: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
                         .parse()
                         .unwrap(),
@@ -207,6 +210,7 @@ async fn detects_ref_multistep_trades() {
                 TradeContext {
                     trader: "williamxx.near".parse().unwrap(),
                     block_height: 118214456,
+                    block_timestamp_nanosec: 1714810103667818241,
                     txid: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
                         .parse()
                         .unwrap(),
@@ -223,6 +227,7 @@ async fn detects_ref_multistep_trades() {
                 TradeContext {
                     trader: "williamxx.near".parse().unwrap(),
                     block_height: 118214456,
+                    block_timestamp_nanosec: 1714810103667818241,
                     txid: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
                         .parse()
                         .unwrap(),
@@ -272,6 +277,7 @@ async fn detects_ref_multistep_trades() {
             TradeContext {
                 trader: "williamxx.near".parse().unwrap(),
                 block_height: 118214456,
+                block_timestamp_nanosec: 1714810103667818241,
                 txid: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
                     .parse()
                     .unwrap(),
@@ -355,6 +361,7 @@ async fn detects_ref_dragonbot_trades() {
                     .parse()
                     .unwrap(),
                 block_height: 118209236,
+                block_timestamp_nanosec: 1714803352814919506,
                 txid: "C4pr5yYyxviWQkt4K7uVFaH14LWR43gcKpj1GDiV4nc8"
                     .parse()
                     .unwrap(),
@@ -393,6 +400,7 @@ async fn detects_ref_dragonbot_trades() {
                     .parse()
                     .unwrap(),
                 block_height: 118209236,
+                block_timestamp_nanosec: 1714803352814919506,
                 txid: "C4pr5yYyxviWQkt4K7uVFaH14LWR43gcKpj1GDiV4nc8"
                     .parse()
                     .unwrap(),
@@ -471,6 +479,7 @@ async fn detects_ref_arbitrage_trades() {
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
+                    block_timestamp_nanosec: 1714807557910817723,
                     txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
                         .parse()
                         .unwrap(),
@@ -487,6 +496,7 @@ async fn detects_ref_arbitrage_trades() {
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
+                    block_timestamp_nanosec: 1714807557910817723,
                     txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
                         .parse()
                         .unwrap(),
@@ -503,6 +513,7 @@ async fn detects_ref_arbitrage_trades() {
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
+                    block_timestamp_nanosec: 1714807557910817723,
                     txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
                         .parse()
                         .unwrap(),
@@ -519,6 +530,7 @@ async fn detects_ref_arbitrage_trades() {
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
+                    block_timestamp_nanosec: 1714807557910817723,
                     txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
                         .parse()
                         .unwrap(),
@@ -535,6 +547,7 @@ async fn detects_ref_arbitrage_trades() {
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
+                    block_timestamp_nanosec: 1714807557910817723,
                     txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
                         .parse()
                         .unwrap(),
@@ -595,6 +608,7 @@ async fn detects_ref_arbitrage_trades() {
             TradeContext {
                 trader: "bot.marior.near".parse().unwrap(),
                 block_height: 118212505,
+                block_timestamp_nanosec: 1714807557910817723,
                 txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
                     .parse()
                     .unwrap(),
@@ -809,6 +823,7 @@ async fn detects_delegate_ref_trades() {
                 TradeContext {
                     trader: "alanmain.near".parse().unwrap(),
                     block_height: 115224417,
+                    block_timestamp_nanosec: 1711109366547729030,
                     txid: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
                         .parse()
                         .unwrap(),
@@ -825,6 +840,7 @@ async fn detects_delegate_ref_trades() {
                 TradeContext {
                     trader: "alanmain.near".parse().unwrap(),
                     block_height: 115224417,
+                    block_timestamp_nanosec: 1711109366547729030,
                     txid: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
                         .parse()
                         .unwrap(),
@@ -841,6 +857,7 @@ async fn detects_delegate_ref_trades() {
                 TradeContext {
                     trader: "alanmain.near".parse().unwrap(),
                     block_height: 115224417,
+                    block_timestamp_nanosec: 1711109366547729030,
                     txid: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
                         .parse()
                         .unwrap(),
@@ -890,6 +907,7 @@ async fn detects_delegate_ref_trades() {
             TradeContext {
                 trader: "alanmain.near".parse().unwrap(),
                 block_height: 115224417,
+                block_timestamp_nanosec: 1711109366547729030,
                 txid: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
                     .parse()
                     .unwrap(),

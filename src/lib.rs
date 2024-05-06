@@ -103,8 +103,9 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct TradeContext {
     trader: AccountId,
-    #[serde(with = "dec_format")]
     block_height: BlockHeight,
+    #[serde(with = "dec_format")]
+    pub block_timestamp_nanosec: u128,
     txid: CryptoHash,
 }
 
