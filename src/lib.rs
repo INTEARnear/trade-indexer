@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use inindexer::{
     near_indexer_primitives::{
         types::{AccountId, Balance, BlockHeight},
-        views::StateChangeValueView,
+        views::{StateChangeCauseView, StateChangeValueView},
         CryptoHash, StreamerMessage,
     },
     near_utils::dec_format,
@@ -50,6 +50,18 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                 } = &state_change.value
                 {
                     if account_id == REF_CONTRACT_ID {
+                        let receipt_id =
+                            if let StateChangeCauseView::ReceiptProcessing { receipt_hash } =
+                                &state_change.cause
+                            {
+                                receipt_hash
+                            } else {
+                                log::warn!(
+                                    "Update not caused by a receipt in block {}",
+                                    block.block.header.height
+                                );
+                                continue;
+                            };
                         let key = key.as_slice();
                         // Prefix changed from b"p" to 0x00 in https://github.com/ref-finance/ref-contracts/commit/a196f4a18368f0c3d62e80ba2788c350c94e85b2
                         #[allow(clippy::if_same_then_else)]
@@ -75,7 +87,8 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                             }
 
                             let pool = Pool {
-                                id: ref_trade_detection::create_ref_pool_id(pool_id),
+                                pool_id: ref_trade_detection::create_ref_pool_id(pool_id),
+                                receipt_id: *receipt_id,
                                 pool: PoolType::Ref(pool),
                             };
                             self.0
@@ -163,7 +176,8 @@ mod balance_changes_serializer {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Pool {
-    id: PoolId,
+    pool_id: PoolId,
+    receipt_id: CryptoHash,
     pool: PoolType,
 }
 

@@ -989,7 +989,7 @@ async fn detects_ref_state_changes() {
 
         async fn on_pool_change(&mut self, pool: &Pool, _height: BlockHeight) {
             self.state_changes
-                .entry(pool.id.clone())
+                .entry(pool.pool_id.clone())
                 .or_default()
                 .push(pool.clone());
         }
@@ -1019,7 +1019,10 @@ async fn detects_ref_state_changes() {
     assert_eq!(
         *indexer.0.state_changes.get("REF-5059").unwrap(),
         vec![Pool {
-            id: "REF-5059".to_owned(),
+            pool_id: "REF-5059".to_owned(),
+            receipt_id: "VPrcZiwgFqKgW9eev4CUKJ4TN8Jk1jSZ2sqFAHothnN"
+                .parse()
+                .unwrap(),
             pool: PoolType::Ref(ref_finance_state::Pool::SimplePool(
                 ref_finance_state::SimplePool {
                     token_account_ids: vec![
