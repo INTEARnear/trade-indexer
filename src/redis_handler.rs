@@ -1,6 +1,5 @@
-use crate::{BalanceChangeSwap, Pool, RawPoolSwap, TradeContext, TradeEventHandler};
+use crate::{BalanceChangeSwap, PoolChangeEvent, RawPoolSwap, TradeContext, TradeEventHandler};
 use async_trait::async_trait;
-use inindexer::near_indexer_primitives::types::BlockHeight;
 use redis::{streams::StreamMaxlen, AsyncCommands};
 
 pub struct PushToRedisStream<C: AsyncCommands + Sync> {
@@ -60,14 +59,14 @@ impl<C: AsyncCommands + Sync + 'static> TradeEventHandler for PushToRedisStream<
         log::debug!("Adding to stream: {response}");
     }
 
-    async fn on_pool_change(&mut self, pool: &Pool, block_height: BlockHeight) {
+    async fn on_pool_change(&mut self, event: &PoolChangeEvent) {
         let response: String = self
             .connection
             .xadd_maxlen(
                 "trade_pool_change",
                 StreamMaxlen::Approx(self.max_stream_size),
-                format!("{block_height}-*"),
-                &[("pool", serde_json::to_string(&pool).unwrap())],
+                format!("{}-*", event.block_height),
+                &[("pool_change", serde_json::to_string(&event).unwrap())],
             )
             .await
             .unwrap();

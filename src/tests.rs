@@ -2,14 +2,13 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 use inindexer::{
-    fastnear_data_server::FastNearDataServerProvider,
-    near_indexer_primitives::types::{AccountId, BlockHeight},
+    fastnear_data_server::FastNearDataServerProvider, near_indexer_primitives::types::AccountId,
     run_indexer, BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
 };
 
 use crate::{
-    ref_finance_state, BalanceChangeSwap, Pool, PoolId, PoolType, RawPoolSwap, TradeContext,
-    TradeEventHandler, TradeIndexer,
+    ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap,
+    TradeContext, TradeEventHandler, TradeIndexer,
 };
 
 #[tokio::test]
@@ -39,7 +38,7 @@ async fn detects_ref_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
+        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -156,7 +155,7 @@ async fn detects_ref_multistep_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
+        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -331,7 +330,7 @@ async fn detects_ref_dragonbot_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
+        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -460,7 +459,7 @@ async fn detects_ref_arbitrage_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
+        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -686,7 +685,7 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
+        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -754,7 +753,7 @@ async fn doesnt_detect_failed_ref_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
+        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -822,7 +821,7 @@ async fn detects_delegate_ref_trades() {
                 .push((balance_changes.clone(), context.clone()));
         }
 
-        async fn on_pool_change(&mut self, _pool: &Pool, _height: BlockHeight) {}
+        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -973,7 +972,7 @@ async fn detects_delegate_ref_trades() {
 #[tokio::test]
 async fn detects_ref_state_changes() {
     struct TestHandler {
-        state_changes: HashMap<PoolId, Vec<Pool>>,
+        state_changes: HashMap<PoolId, Vec<PoolChangeEvent>>,
     }
 
     #[async_trait]
@@ -987,7 +986,7 @@ async fn detects_ref_state_changes() {
         ) {
         }
 
-        async fn on_pool_change(&mut self, pool: &Pool, _height: BlockHeight) {
+        async fn on_pool_change(&mut self, pool: &PoolChangeEvent) {
             self.state_changes
                 .entry(pool.pool_id.clone())
                 .or_default()
@@ -1018,11 +1017,13 @@ async fn detects_ref_state_changes() {
 
     assert_eq!(
         *indexer.0.state_changes.get("REF-5059").unwrap(),
-        vec![Pool {
+        vec![PoolChangeEvent {
             pool_id: "REF-5059".to_owned(),
             receipt_id: "VPrcZiwgFqKgW9eev4CUKJ4TN8Jk1jSZ2sqFAHothnN"
                 .parse()
                 .unwrap(),
+            block_height: 118210091,
+            block_timestamp_nanosec: 1714804406674985128,
             pool: PoolType::Ref(ref_finance_state::Pool::SimplePool(
                 ref_finance_state::SimplePool {
                     token_account_ids: vec![

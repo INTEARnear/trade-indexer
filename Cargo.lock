@@ -1331,7 +1331,7 @@ dependencies = [
 [[package]]
 name = "inindexer"
 version = "0.1.0-alpha.3"
-source = "git+https://github.com/INTEARnear/inindexer#33c3514314c6a2a7cc057b8dd7ab7ddee0b913db"
+source = "git+https://github.com/INTEARnear/inindexer#ad9c77d37e17c1af2ea72b659a4355a66316acf5"
 dependencies = [
  "async-trait",
  "futures",

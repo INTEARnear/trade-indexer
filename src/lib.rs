@@ -33,7 +33,7 @@ pub trait TradeEventHandler: Send + Sync + 'static {
         context: &TradeContext,
         balance_changes: &BalanceChangeSwap,
     );
-    async fn on_pool_change(&mut self, pool: &Pool, block_height: BlockHeight);
+    async fn on_pool_change(&mut self, pool: &PoolChangeEvent);
 }
 
 #[async_trait]
@@ -86,14 +86,14 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                 continue;
                             }
 
-                            let pool = Pool {
+                            let pool = PoolChangeEvent {
                                 pool_id: ref_trade_detection::create_ref_pool_id(pool_id),
                                 receipt_id: *receipt_id,
+                                block_timestamp_nanosec: block.block.header.timestamp_nanosec,
+                                block_height: block.block.header.height,
                                 pool: PoolType::Ref(pool),
                             };
-                            self.0
-                                .on_pool_change(&pool, block.block.header.height)
-                                .await;
+                            self.0.on_pool_change(&pool).await;
                         }
                     }
                 }
@@ -175,9 +175,11 @@ mod balance_changes_serializer {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Pool {
+pub struct PoolChangeEvent {
     pool_id: PoolId,
     receipt_id: CryptoHash,
+    block_timestamp_nanosec: u64,
+    block_height: u64,
     pool: PoolType,
 }
 
