@@ -106,7 +106,8 @@ pub struct TradeContext {
     block_height: BlockHeight,
     #[serde(with = "dec_format")]
     pub block_timestamp_nanosec: u128,
-    txid: CryptoHash,
+    transaction_id: CryptoHash,
+    receipt_id: CryptoHash,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

@@ -82,7 +82,10 @@ async fn detects_ref_trades() {
                 trader: "skyto.near".parse().unwrap(),
                 block_height: 118210091,
                 block_timestamp_nanosec: 1714804406674985128,
-                txid: "E4okfxk1x6GdXA5YAwZpzyAqBnnXfo5XfKxj6cMF62Ky"
+                transaction_id: "E4okfxk1x6GdXA5YAwZpzyAqBnnXfo5XfKxj6cMF62Ky"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "VPrcZiwgFqKgW9eev4CUKJ4TN8Jk1jSZ2sqFAHothnN"
                     .parse()
                     .unwrap(),
             }
@@ -115,7 +118,10 @@ async fn detects_ref_trades() {
                 trader: "skyto.near".parse().unwrap(),
                 block_height: 118210091,
                 block_timestamp_nanosec: 1714804406674985128,
-                txid: "E4okfxk1x6GdXA5YAwZpzyAqBnnXfo5XfKxj6cMF62Ky"
+                transaction_id: "E4okfxk1x6GdXA5YAwZpzyAqBnnXfo5XfKxj6cMF62Ky"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "VPrcZiwgFqKgW9eev4CUKJ4TN8Jk1jSZ2sqFAHothnN"
                     .parse()
                     .unwrap(),
             }
@@ -194,7 +200,10 @@ async fn detects_ref_multistep_trades() {
                     trader: "williamxx.near".parse().unwrap(),
                     block_height: 118214456,
                     block_timestamp_nanosec: 1714810103667818241,
-                    txid: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
+                    transaction_id: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "8Ux6ezDRgMAXsVtKysjhz7vvWSGrg5Fc2bYLeFVZACK"
                         .parse()
                         .unwrap(),
                 }
@@ -211,7 +220,10 @@ async fn detects_ref_multistep_trades() {
                     trader: "williamxx.near".parse().unwrap(),
                     block_height: 118214456,
                     block_timestamp_nanosec: 1714810103667818241,
-                    txid: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
+                    transaction_id: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "8Ux6ezDRgMAXsVtKysjhz7vvWSGrg5Fc2bYLeFVZACK"
                         .parse()
                         .unwrap(),
                 }
@@ -228,7 +240,10 @@ async fn detects_ref_multistep_trades() {
                     trader: "williamxx.near".parse().unwrap(),
                     block_height: 118214456,
                     block_timestamp_nanosec: 1714810103667818241,
-                    txid: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
+                    transaction_id: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "8Ux6ezDRgMAXsVtKysjhz7vvWSGrg5Fc2bYLeFVZACK"
                         .parse()
                         .unwrap(),
                 }
@@ -278,7 +293,10 @@ async fn detects_ref_multistep_trades() {
                 trader: "williamxx.near".parse().unwrap(),
                 block_height: 118214456,
                 block_timestamp_nanosec: 1714810103667818241,
-                txid: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
+                transaction_id: "HQs1nW3B7XAc6RT7vP6vmmp2YRz19pY1avf6rWQpby3a"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "8Ux6ezDRgMAXsVtKysjhz7vvWSGrg5Fc2bYLeFVZACK"
                     .parse()
                     .unwrap(),
             }
@@ -362,7 +380,10 @@ async fn detects_ref_dragonbot_trades() {
                     .unwrap(),
                 block_height: 118209236,
                 block_timestamp_nanosec: 1714803352814919506,
-                txid: "C4pr5yYyxviWQkt4K7uVFaH14LWR43gcKpj1GDiV4nc8"
+                transaction_id: "C4pr5yYyxviWQkt4K7uVFaH14LWR43gcKpj1GDiV4nc8"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "4xmgsfQ6YypjKC2hxts11YBuRNYjaavShtrpRAWxFHNu"
                     .parse()
                     .unwrap(),
             }
@@ -401,7 +422,10 @@ async fn detects_ref_dragonbot_trades() {
                     .unwrap(),
                 block_height: 118209236,
                 block_timestamp_nanosec: 1714803352814919506,
-                txid: "C4pr5yYyxviWQkt4K7uVFaH14LWR43gcKpj1GDiV4nc8"
+                transaction_id: "C4pr5yYyxviWQkt4K7uVFaH14LWR43gcKpj1GDiV4nc8"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "4xmgsfQ6YypjKC2hxts11YBuRNYjaavShtrpRAWxFHNu"
                     .parse()
                     .unwrap(),
             }
@@ -480,7 +504,10 @@ async fn detects_ref_arbitrage_trades() {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
                     block_timestamp_nanosec: 1714807557910817723,
-                    txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                    transaction_id: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "FGYgTGuWkJD6W7wFXmFkP95rxdGbmxPWbNLTttFEwUam"
                         .parse()
                         .unwrap(),
                 }
@@ -497,7 +524,10 @@ async fn detects_ref_arbitrage_trades() {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
                     block_timestamp_nanosec: 1714807557910817723,
-                    txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                    transaction_id: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "FGYgTGuWkJD6W7wFXmFkP95rxdGbmxPWbNLTttFEwUam"
                         .parse()
                         .unwrap(),
                 }
@@ -514,7 +544,10 @@ async fn detects_ref_arbitrage_trades() {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
                     block_timestamp_nanosec: 1714807557910817723,
-                    txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                    transaction_id: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "FGYgTGuWkJD6W7wFXmFkP95rxdGbmxPWbNLTttFEwUam"
                         .parse()
                         .unwrap(),
                 }
@@ -531,7 +564,10 @@ async fn detects_ref_arbitrage_trades() {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
                     block_timestamp_nanosec: 1714807557910817723,
-                    txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                    transaction_id: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "FGYgTGuWkJD6W7wFXmFkP95rxdGbmxPWbNLTttFEwUam"
                         .parse()
                         .unwrap(),
                 }
@@ -548,7 +584,10 @@ async fn detects_ref_arbitrage_trades() {
                     trader: "bot.marior.near".parse().unwrap(),
                     block_height: 118212505,
                     block_timestamp_nanosec: 1714807557910817723,
-                    txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                    transaction_id: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "FGYgTGuWkJD6W7wFXmFkP95rxdGbmxPWbNLTttFEwUam"
                         .parse()
                         .unwrap(),
                 }
@@ -609,7 +648,10 @@ async fn detects_ref_arbitrage_trades() {
                 trader: "bot.marior.near".parse().unwrap(),
                 block_height: 118212505,
                 block_timestamp_nanosec: 1714807557910817723,
-                txid: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                transaction_id: "8GxZPccqVMhXmrU1kZMJ1fSrnZ28kaPipiYQRPNT43BG"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "FGYgTGuWkJD6W7wFXmFkP95rxdGbmxPWbNLTttFEwUam"
                     .parse()
                     .unwrap(),
             }
@@ -824,7 +866,10 @@ async fn detects_delegate_ref_trades() {
                     trader: "alanmain.near".parse().unwrap(),
                     block_height: 115224417,
                     block_timestamp_nanosec: 1711109366547729030,
-                    txid: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
+                    transaction_id: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2rb7u5GeRdDLnyM9ggKg4RMBge3UMCbuwk5Gr9fC5jon"
                         .parse()
                         .unwrap(),
                 }
@@ -841,7 +886,10 @@ async fn detects_delegate_ref_trades() {
                     trader: "alanmain.near".parse().unwrap(),
                     block_height: 115224417,
                     block_timestamp_nanosec: 1711109366547729030,
-                    txid: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
+                    transaction_id: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2rb7u5GeRdDLnyM9ggKg4RMBge3UMCbuwk5Gr9fC5jon"
                         .parse()
                         .unwrap(),
                 }
@@ -858,7 +906,10 @@ async fn detects_delegate_ref_trades() {
                     trader: "alanmain.near".parse().unwrap(),
                     block_height: 115224417,
                     block_timestamp_nanosec: 1711109366547729030,
-                    txid: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
+                    transaction_id: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2rb7u5GeRdDLnyM9ggKg4RMBge3UMCbuwk5Gr9fC5jon"
                         .parse()
                         .unwrap(),
                 }
@@ -908,7 +959,10 @@ async fn detects_delegate_ref_trades() {
                 trader: "alanmain.near".parse().unwrap(),
                 block_height: 115224417,
                 block_timestamp_nanosec: 1711109366547729030,
-                txid: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
+                transaction_id: "AM6t5vuuShi8qFjunBzvWbqCo9rh9Ttk4XzJnPXAvGsk"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "2rb7u5GeRdDLnyM9ggKg4RMBge3UMCbuwk5Gr9fC5jon"
                     .parse()
                     .unwrap(),
             }

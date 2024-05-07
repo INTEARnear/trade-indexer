@@ -141,7 +141,8 @@ pub async fn detect(
             trader,
             block_height: block.block.header.height,
             block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
-            txid: transaction.transaction.transaction.hash,
+            transaction_id: transaction.transaction.transaction.hash,
+            receipt_id: receipt.receipt.receipt.receipt_id,
         };
         for raw_pool_swap in raw_pool_swaps.iter() {
             handler.on_raw_pool_swap(&context, raw_pool_swap).await;
