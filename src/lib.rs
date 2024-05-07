@@ -89,7 +89,8 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                             let pool = PoolChangeEvent {
                                 pool_id: ref_trade_detection::create_ref_pool_id(pool_id),
                                 receipt_id: *receipt_id,
-                                block_timestamp_nanosec: block.block.header.timestamp_nanosec,
+                                block_timestamp_nanosec: block.block.header.timestamp_nanosec
+                                    as u128,
                                 block_height: block.block.header.height,
                                 pool: PoolType::Ref(pool),
                             };
@@ -178,8 +179,9 @@ mod balance_changes_serializer {
 pub struct PoolChangeEvent {
     pool_id: PoolId,
     receipt_id: CryptoHash,
-    block_timestamp_nanosec: u64,
-    block_height: u64,
+    #[serde(with = "dec_format")]
+    block_timestamp_nanosec: u128,
+    block_height: BlockHeight,
     pool: PoolType,
 }
 
