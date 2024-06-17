@@ -69,7 +69,8 @@ pub async fn detect(
                         }
                     }
                     // There could be some edge cases with both "swap" and "ft_transfer_call" as
-                    // separate actions in one transaction, but since the ft_transfer_call caller
+                    // separate actions in one transaction (if it's possible to have 2 function
+                    // call actions in 1 transaction), but since the ft_transfer_call caller
                     // must be the same as swap caller, it should be handled correctly by the
                     // statement above.
                 }
@@ -144,8 +145,10 @@ pub async fn detect(
             transaction_id: transaction.transaction.transaction.hash,
             receipt_id: receipt.receipt.receipt.receipt_id,
         };
-        for raw_pool_swap in raw_pool_swaps.iter() {
-            handler.on_raw_pool_swap(&context, raw_pool_swap).await;
+        for raw_pool_swap in raw_pool_swaps.clone() {
+            handler
+                .on_raw_pool_swap(context.clone(), raw_pool_swap)
+                .await;
         }
         balance_changes.retain(|_, v| *v != 0);
         if !balance_changes.is_empty() {
@@ -154,7 +157,7 @@ pub async fn detect(
                 pool_swaps: raw_pool_swaps,
             };
             handler
-                .on_balance_change_swap(&context, &balance_changes)
+                .on_balance_change_swap(context, balance_changes)
                 .await;
         }
     }

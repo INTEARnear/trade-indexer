@@ -1,6 +1,6 @@
 use trade_indexer::redis_handler::PushToRedisStream;
 
-use inindexer::fastnear_data_server::FastNearDataServerProvider;
+use inindexer::neardata_server::NeardataServerProvider;
 use inindexer::{
     run_indexer, AutoContinue, BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
 };
@@ -21,15 +21,10 @@ async fn main() {
     .unwrap();
     let connection = ConnectionManager::new(client).await.unwrap();
 
-    let mut indexer = trade_indexer::TradeIndexer(PushToRedisStream::new(connection, 100_000));
+    let mut indexer =
+        trade_indexer::TradeIndexer(PushToRedisStream::new(connection, 100_000).await);
 
-    #[cfg(feature = "parallel")]
-    let streamer = inindexer::message_provider::ParallelProviderStreamer::new(
-        FastNearDataServerProvider::mainnet(),
-        10,
-    );
-    #[cfg(not(feature = "parallel"))]
-    let streamer = FastNearDataServerProvider::mainnet();
+    let streamer = NeardataServerProvider::mainnet();
 
     run_indexer(
         &mut indexer,

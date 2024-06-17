@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 use inindexer::{
-    fastnear_data_server::FastNearDataServerProvider, near_indexer_primitives::types::AccountId,
+    near_indexer_primitives::types::AccountId, neardata_server::NeardataServerProvider,
     run_indexer, BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
 };
 
@@ -20,25 +20,25 @@ async fn detects_ref_trades() {
 
     #[async_trait]
     impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: &TradeContext, swap: &RawPoolSwap) {
+        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
             self.pool_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((swap.clone(), context.clone()));
+                .push((swap, context));
         }
 
         async fn on_balance_change_swap(
             &mut self,
-            context: &TradeContext,
-            balance_changes: &BalanceChangeSwap,
+            context: TradeContext,
+            balance_changes: BalanceChangeSwap,
         ) {
             self.balance_change_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((balance_changes.clone(), context.clone()));
+                .push((balance_changes, context));
         }
 
-        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
+        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -50,7 +50,7 @@ async fn detects_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        FastNearDataServerProvider::mainnet(),
+        NeardataServerProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_210_089..=118_210_094),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -137,25 +137,25 @@ async fn detects_ref_multistep_trades() {
 
     #[async_trait]
     impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: &TradeContext, swap: &RawPoolSwap) {
+        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
             self.pool_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((swap.clone(), context.clone()));
+                .push((swap, context));
         }
 
         async fn on_balance_change_swap(
             &mut self,
-            context: &TradeContext,
-            balance_changes: &BalanceChangeSwap,
+            context: TradeContext,
+            balance_changes: BalanceChangeSwap,
         ) {
             self.balance_change_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((balance_changes.clone(), context.clone()));
+                .push((balance_changes, context));
         }
 
-        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
+        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -167,7 +167,7 @@ async fn detects_ref_multistep_trades() {
 
     run_indexer(
         &mut indexer,
-        FastNearDataServerProvider::mainnet(),
+        NeardataServerProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_214_454..=118_214_461),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -312,25 +312,25 @@ async fn detects_ref_dragonbot_trades() {
 
     #[async_trait]
     impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: &TradeContext, swap: &RawPoolSwap) {
+        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
             self.pool_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((swap.clone(), context.clone()));
+                .push((swap, context));
         }
 
         async fn on_balance_change_swap(
             &mut self,
-            context: &TradeContext,
-            balance_changes: &BalanceChangeSwap,
+            context: TradeContext,
+            balance_changes: BalanceChangeSwap,
         ) {
             self.balance_change_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((balance_changes.clone(), context.clone()));
+                .push((balance_changes, context));
         }
 
-        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
+        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -342,7 +342,7 @@ async fn detects_ref_dragonbot_trades() {
 
     run_indexer(
         &mut indexer,
-        FastNearDataServerProvider::mainnet(),
+        NeardataServerProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_209_234..=118_209_239),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -441,25 +441,25 @@ async fn detects_ref_arbitrage_trades() {
 
     #[async_trait]
     impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: &TradeContext, swap: &RawPoolSwap) {
+        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
             self.pool_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((swap.clone(), context.clone()));
+                .push((swap, context));
         }
 
         async fn on_balance_change_swap(
             &mut self,
-            context: &TradeContext,
-            balance_changes: &BalanceChangeSwap,
+            context: TradeContext,
+            balance_changes: BalanceChangeSwap,
         ) {
             self.balance_change_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((balance_changes.clone(), context.clone()));
+                .push((balance_changes, context));
         }
 
-        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
+        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -471,7 +471,7 @@ async fn detects_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        FastNearDataServerProvider::mainnet(),
+        NeardataServerProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_212_504..=118_212_506),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -667,25 +667,25 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
 
     #[async_trait]
     impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: &TradeContext, swap: &RawPoolSwap) {
+        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
             self.pool_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((swap.clone(), context.clone()));
+                .push((swap, context));
         }
 
         async fn on_balance_change_swap(
             &mut self,
-            context: &TradeContext,
-            balance_changes: &BalanceChangeSwap,
+            context: TradeContext,
+            balance_changes: BalanceChangeSwap,
         ) {
             self.balance_change_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((balance_changes.clone(), context.clone()));
+                .push((balance_changes, context));
         }
 
-        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
+        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -697,7 +697,7 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        FastNearDataServerProvider::mainnet(),
+        NeardataServerProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_214_071..=118_214_073),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -735,25 +735,25 @@ async fn doesnt_detect_failed_ref_trades() {
 
     #[async_trait]
     impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: &TradeContext, swap: &RawPoolSwap) {
+        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
             self.pool_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((swap.clone(), context.clone()));
+                .push((swap, context));
         }
 
         async fn on_balance_change_swap(
             &mut self,
-            context: &TradeContext,
-            balance_changes: &BalanceChangeSwap,
+            context: TradeContext,
+            balance_changes: BalanceChangeSwap,
         ) {
             self.balance_change_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((balance_changes.clone(), context.clone()));
+                .push((balance_changes, context));
         }
 
-        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
+        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -765,7 +765,7 @@ async fn doesnt_detect_failed_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        FastNearDataServerProvider::mainnet(),
+        NeardataServerProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(112_087_639..=112_087_643),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -803,25 +803,25 @@ async fn detects_delegate_ref_trades() {
 
     #[async_trait]
     impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: &TradeContext, swap: &RawPoolSwap) {
+        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
             self.pool_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((swap.clone(), context.clone()));
+                .push((swap, context));
         }
 
         async fn on_balance_change_swap(
             &mut self,
-            context: &TradeContext,
-            balance_changes: &BalanceChangeSwap,
+            context: TradeContext,
+            balance_changes: BalanceChangeSwap,
         ) {
             self.balance_change_swaps
                 .entry(context.trader.clone())
                 .or_default()
-                .push((balance_changes.clone(), context.clone()));
+                .push((balance_changes, context));
         }
 
-        async fn on_pool_change(&mut self, _pool: &PoolChangeEvent) {}
+        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
     }
 
     let handler = TestHandler {
@@ -833,7 +833,7 @@ async fn detects_delegate_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        FastNearDataServerProvider::mainnet(),
+        NeardataServerProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(115_224_414..=115_224_420),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -977,20 +977,20 @@ async fn detects_ref_state_changes() {
 
     #[async_trait]
     impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, _context: &TradeContext, _swap: &RawPoolSwap) {}
+        async fn on_raw_pool_swap(&mut self, _context: TradeContext, _swap: RawPoolSwap) {}
 
         async fn on_balance_change_swap(
             &mut self,
-            _context: &TradeContext,
-            _balance_changes: &BalanceChangeSwap,
+            _context: TradeContext,
+            _balance_changes: BalanceChangeSwap,
         ) {
         }
 
-        async fn on_pool_change(&mut self, pool: &PoolChangeEvent) {
+        async fn on_pool_change(&mut self, pool: PoolChangeEvent) {
             self.state_changes
                 .entry(pool.pool_id.clone())
                 .or_default()
-                .push(pool.clone());
+                .push(pool);
         }
     }
 
@@ -1002,7 +1002,7 @@ async fn detects_ref_state_changes() {
 
     run_indexer(
         &mut indexer,
-        FastNearDataServerProvider::mainnet(),
+        NeardataServerProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_210_089..=118_210_094),
             preprocess_transactions: Some(PreprocessTransactionsSettings {

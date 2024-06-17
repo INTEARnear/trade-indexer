@@ -1,20 +1,17 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use borsh::BorshDeserialize;
 use inindexer::{
     near_indexer_primitives::{
         types::{AccountId, Balance, BlockHeight},
         views::{StateChangeCauseView, StateChangeValueView},
         CryptoHash, StreamerMessage,
     },
-    near_utils::dec_format,
     IncompleteTransaction, Indexer, TransactionReceipt,
 };
-use near_sdk::borsh::BorshDeserialize;
 use ref_trade_detection::REF_CONTRACT_ID;
-use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "redis-handler")]
 pub mod redis_handler;
 mod ref_finance_state;
 mod ref_trade_detection;
@@ -27,13 +24,13 @@ pub struct TradeIndexer<T: TradeEventHandler>(pub T);
 
 #[async_trait]
 pub trait TradeEventHandler: Send + Sync + 'static {
-    async fn on_raw_pool_swap(&mut self, context: &TradeContext, swap: &RawPoolSwap);
+    async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap);
     async fn on_balance_change_swap(
         &mut self,
-        context: &TradeContext,
-        balance_changes: &BalanceChangeSwap,
+        context: TradeContext,
+        balance_changes: BalanceChangeSwap,
     );
-    async fn on_pool_change(&mut self, pool: &PoolChangeEvent);
+    async fn on_pool_change(&mut self, pool: PoolChangeEvent);
 }
 
 #[async_trait]
@@ -94,7 +91,7 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                 block_height: block.block.header.height,
                                 pool: PoolType::Ref(pool),
                             };
-                            self.0.on_pool_change(&pool).await;
+                            self.0.on_pool_change(pool).await;
                         }
                     }
                 }
@@ -114,78 +111,40 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TradeContext {
     trader: AccountId,
     block_height: BlockHeight,
-    #[serde(with = "dec_format")]
     pub block_timestamp_nanosec: u128,
     transaction_id: CryptoHash,
     receipt_id: CryptoHash,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct RawPoolSwap {
     pool: PoolId,
     token_in: AccountId,
     token_out: AccountId,
-    #[serde(with = "dec_format")]
     amount_in: Balance,
-    #[serde(with = "dec_format")]
     amount_out: Balance,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub struct BalanceChangeSwap {
-    #[serde(with = "balance_changes_serializer")]
     balance_changes: HashMap<AccountId, i128>,
     pool_swaps: Vec<RawPoolSwap>,
 }
 
-mod balance_changes_serializer {
-    use serde::{Deserializer, Serializer};
-
-    use super::*;
-
-    pub fn serialize<S>(
-        balance_changes: &HashMap<AccountId, i128>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let balance_changes_stringified: HashMap<&AccountId, String> = balance_changes
-            .iter()
-            .map(|(k, v)| (k, v.to_string()))
-            .collect();
-        balance_changes_stringified.serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<HashMap<AccountId, i128>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let balance_changes_stringified: HashMap<AccountId, String> =
-            Deserialize::deserialize(deserializer)?;
-        let mut balance_changes: HashMap<AccountId, i128> = HashMap::new();
-        for (k, v) in balance_changes_stringified {
-            balance_changes.insert(k, v.parse().map_err(serde::de::Error::custom)?);
-        }
-        Ok(balance_changes)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub struct PoolChangeEvent {
     pool_id: PoolId,
     receipt_id: CryptoHash,
-    #[serde(with = "dec_format")]
     block_timestamp_nanosec: u128,
     block_height: BlockHeight,
     pool: PoolType,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub enum PoolType {
     Ref(ref_finance_state::Pool),
 }
