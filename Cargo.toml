@@ -16,4 +16,4 @@ borsh = "1.5.1"
 dotenv = "0.15.0"
 redis = { version = "0.25.3", features = [ "tokio-rustls-comp", "connection-manager" ] }
 inevents-redis = { git = "https://github.com/INTEARnear/inevents" }
-intear-events = { git = "https://github.com/INTEARnear/inevents" }
+intear-events = { git = "https://github.com/INTEARnear/inevents", default-features = false }
