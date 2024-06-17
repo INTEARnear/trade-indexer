@@ -1892,7 +1892,7 @@ dependencies = [
 [[package]]
 name = "inevents"
 version = "1.0.0"
-source = "git+https://github.com/INTEARnear/inevents#1baf715f378bfe279f56dbf098d63dcc895e30e7"
+source = "git+https://github.com/INTEARnear/inevents#231e8a72010b8a3e7314bb0fa164e26480f53218"
 dependencies = [
  "actix",
  "actix-cors",
@@ -1919,7 +1919,7 @@ dependencies = [
 [[package]]
 name = "inevents-redis"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/inevents#1baf715f378bfe279f56dbf098d63dcc895e30e7"
+source = "git+https://github.com/INTEARnear/inevents#231e8a72010b8a3e7314bb0fa164e26480f53218"
 dependencies = [
  "anyhow",
  "dotenvy",
@@ -1951,7 +1951,7 @@ dependencies = [
 [[package]]
 name = "intear-events"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/inevents#1baf715f378bfe279f56dbf098d63dcc895e30e7"
+source = "git+https://github.com/INTEARnear/inevents#231e8a72010b8a3e7314bb0fa164e26480f53218"
 dependencies = [
  "actix",
  "chrono",
@@ -1966,7 +1966,6 @@ dependencies = [
  "serde_json",
  "simple_logger",
  "sqlx",
- "tokio",
 ]
 
 [[package]]
