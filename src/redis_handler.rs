@@ -24,9 +24,9 @@ pub struct PushToRedisStream {
 impl PushToRedisStream {
     pub async fn new(connection: ConnectionManager, max_stream_size: usize) -> Self {
         Self {
-            pool_stream: RedisEventStream::new(connection.clone(), "trade_pool").await,
-            swap_stream: RedisEventStream::new(connection.clone(), "trade_swap").await,
-            pool_change_stream: RedisEventStream::new(connection, "trade_pool_change").await,
+            pool_stream: RedisEventStream::new(connection.clone(), "trade_pool"),
+            swap_stream: RedisEventStream::new(connection.clone(), "trade_swap"),
+            pool_change_stream: RedisEventStream::new(connection, "trade_pool_change"),
             max_stream_size,
         }
     }
@@ -53,7 +53,6 @@ impl TradeEventHandler for PushToRedisStream {
                 },
                 self.max_stream_size,
             )
-            .await
             .expect("Failed to emit pool event");
     }
 
@@ -76,7 +75,6 @@ impl TradeEventHandler for PushToRedisStream {
                 },
                 self.max_stream_size,
             )
-            .await
             .expect("Failed to emit swap event");
     }
 
@@ -172,7 +170,6 @@ impl TradeEventHandler for PushToRedisStream {
                 },
                 self.max_stream_size,
             )
-            .await
             .expect("Failed to emit pool change event");
     }
 }
