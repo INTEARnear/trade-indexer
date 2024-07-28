@@ -77,6 +77,26 @@ pub async fn detect(
             }
         }
 
+        if trader == "ref.hot.tg" {
+            if let Some(receipt) = find_parent_receipt(transaction, receipt) {
+                if let Some(receipt) = find_parent_receipt(transaction, receipt) {
+                    trader = receipt.receipt.receipt.predecessor_id.clone();
+                } else {
+                    log::warn!(
+                        "Could not find the parent receipt of the parent receipt of the ref.hot.tg trade {:?}",
+                        transaction.transaction.transaction.hash
+                    );
+                    return;
+                }
+            } else {
+                log::warn!(
+                    "Could not find the parent receipt of the ref.hot.tg trade {:?}",
+                    transaction.transaction.transaction.hash
+                );
+                return;
+            }
+        }
+
         for log in &receipt.receipt.execution_outcome.outcome.logs {
             if let Some(log) = log.strip_prefix("Swapped ") {
                 if let Some((token_in, token_out)) = log.split_once(" for ") {
@@ -203,4 +223,23 @@ struct Action {
     token_out: AccountId,
     #[serde(with = "dec_format")]
     min_amount_out: Balance,
+}
+
+fn find_parent_receipt<'a>(
+    transaction: &'a IncompleteTransaction,
+    receipt: &TransactionReceipt,
+) -> Option<&'a TransactionReceipt> {
+    transaction.receipts.iter().find_map(|r| {
+        if let Some(r) = r.1 {
+            if r.receipt
+                .execution_outcome
+                .outcome
+                .receipt_ids
+                .contains(&receipt.receipt.receipt.receipt_id)
+            {
+                return Some(r);
+            }
+        }
+        None
+    })
 }

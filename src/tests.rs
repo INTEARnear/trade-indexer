@@ -11,42 +11,38 @@ use crate::{
     TradeContext, TradeEventHandler, TradeIndexer,
 };
 
+#[derive(Default)]
+struct TestHandler {
+    pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
+    balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
+}
+
+#[async_trait]
+impl TradeEventHandler for TestHandler {
+    async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
+        self.pool_swaps
+            .entry(context.trader.clone())
+            .or_default()
+            .push((swap, context));
+    }
+
+    async fn on_balance_change_swap(
+        &mut self,
+        context: TradeContext,
+        balance_changes: BalanceChangeSwap,
+    ) {
+        self.balance_change_swaps
+            .entry(context.trader.clone())
+            .or_default()
+            .push((balance_changes, context));
+    }
+
+    async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
+}
+
 #[tokio::test]
 async fn detects_ref_trades() {
-    struct TestHandler {
-        pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
-        balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
-    }
-
-    #[async_trait]
-    impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
-            self.pool_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((swap, context));
-        }
-
-        async fn on_balance_change_swap(
-            &mut self,
-            context: TradeContext,
-            balance_changes: BalanceChangeSwap,
-        ) {
-            self.balance_change_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((balance_changes, context));
-        }
-
-        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
-    }
-
-    let handler = TestHandler {
-        pool_swaps: HashMap::new(),
-        balance_change_swaps: HashMap::new(),
-    };
-
-    let mut indexer = TradeIndexer(handler);
+    let mut indexer = TradeIndexer(TestHandler::default());
 
     run_indexer(
         &mut indexer,
@@ -130,40 +126,7 @@ async fn detects_ref_trades() {
 
 #[tokio::test]
 async fn detects_ref_multistep_trades() {
-    struct TestHandler {
-        pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
-        balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
-    }
-
-    #[async_trait]
-    impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
-            self.pool_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((swap, context));
-        }
-
-        async fn on_balance_change_swap(
-            &mut self,
-            context: TradeContext,
-            balance_changes: BalanceChangeSwap,
-        ) {
-            self.balance_change_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((balance_changes, context));
-        }
-
-        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
-    }
-
-    let handler = TestHandler {
-        pool_swaps: HashMap::new(),
-        balance_change_swaps: HashMap::new(),
-    };
-
-    let mut indexer = TradeIndexer(handler);
+    let mut indexer = TradeIndexer(TestHandler::default());
 
     run_indexer(
         &mut indexer,
@@ -305,40 +268,7 @@ async fn detects_ref_multistep_trades() {
 
 #[tokio::test]
 async fn detects_ref_dragonbot_trades() {
-    struct TestHandler {
-        pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
-        balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
-    }
-
-    #[async_trait]
-    impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
-            self.pool_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((swap, context));
-        }
-
-        async fn on_balance_change_swap(
-            &mut self,
-            context: TradeContext,
-            balance_changes: BalanceChangeSwap,
-        ) {
-            self.balance_change_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((balance_changes, context));
-        }
-
-        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
-    }
-
-    let handler = TestHandler {
-        pool_swaps: HashMap::new(),
-        balance_change_swaps: HashMap::new(),
-    };
-
-    let mut indexer = TradeIndexer(handler);
+    let mut indexer = TradeIndexer(TestHandler::default());
 
     run_indexer(
         &mut indexer,
@@ -434,40 +364,7 @@ async fn detects_ref_dragonbot_trades() {
 
 #[tokio::test]
 async fn detects_ref_arbitrage_trades() {
-    struct TestHandler {
-        pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
-        balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
-    }
-
-    #[async_trait]
-    impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
-            self.pool_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((swap, context));
-        }
-
-        async fn on_balance_change_swap(
-            &mut self,
-            context: TradeContext,
-            balance_changes: BalanceChangeSwap,
-        ) {
-            self.balance_change_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((balance_changes, context));
-        }
-
-        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
-    }
-
-    let handler = TestHandler {
-        pool_swaps: HashMap::new(),
-        balance_change_swaps: HashMap::new(),
-    };
-
-    let mut indexer = TradeIndexer(handler);
+    let mut indexer = TradeIndexer(TestHandler::default());
 
     run_indexer(
         &mut indexer,
@@ -660,40 +557,7 @@ async fn detects_ref_arbitrage_trades() {
 
 #[tokio::test]
 async fn doesnt_detect_failed_ref_arbitrage_trades() {
-    struct TestHandler {
-        pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
-        balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
-    }
-
-    #[async_trait]
-    impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
-            self.pool_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((swap, context));
-        }
-
-        async fn on_balance_change_swap(
-            &mut self,
-            context: TradeContext,
-            balance_changes: BalanceChangeSwap,
-        ) {
-            self.balance_change_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((balance_changes, context));
-        }
-
-        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
-    }
-
-    let handler = TestHandler {
-        pool_swaps: HashMap::new(),
-        balance_change_swaps: HashMap::new(),
-    };
-
-    let mut indexer = TradeIndexer(handler);
+    let mut indexer = TradeIndexer(TestHandler::default());
 
     run_indexer(
         &mut indexer,
@@ -728,40 +592,7 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
 
 #[tokio::test]
 async fn doesnt_detect_failed_ref_trades() {
-    struct TestHandler {
-        pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
-        balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
-    }
-
-    #[async_trait]
-    impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
-            self.pool_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((swap, context));
-        }
-
-        async fn on_balance_change_swap(
-            &mut self,
-            context: TradeContext,
-            balance_changes: BalanceChangeSwap,
-        ) {
-            self.balance_change_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((balance_changes, context));
-        }
-
-        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
-    }
-
-    let handler = TestHandler {
-        pool_swaps: HashMap::new(),
-        balance_change_swaps: HashMap::new(),
-    };
-
-    let mut indexer = TradeIndexer(handler);
+    let mut indexer = TradeIndexer(TestHandler::default());
 
     run_indexer(
         &mut indexer,
@@ -796,40 +627,7 @@ async fn doesnt_detect_failed_ref_trades() {
 
 #[tokio::test]
 async fn detects_delegate_ref_trades() {
-    struct TestHandler {
-        pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
-        balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
-    }
-
-    #[async_trait]
-    impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, context: TradeContext, swap: RawPoolSwap) {
-            self.pool_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((swap, context));
-        }
-
-        async fn on_balance_change_swap(
-            &mut self,
-            context: TradeContext,
-            balance_changes: BalanceChangeSwap,
-        ) {
-            self.balance_change_swaps
-                .entry(context.trader.clone())
-                .or_default()
-                .push((balance_changes, context));
-        }
-
-        async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
-    }
-
-    let handler = TestHandler {
-        pool_swaps: HashMap::new(),
-        balance_change_swaps: HashMap::new(),
-    };
-
-    let mut indexer = TradeIndexer(handler);
+    let mut indexer = TradeIndexer(TestHandler::default());
 
     run_indexer(
         &mut indexer,
@@ -1049,5 +847,117 @@ async fn detects_ref_state_changes() {
                 }
             ))
         }]
+    );
+}
+
+#[tokio::test]
+async fn detects_ref_hot_tg_trades() {
+    let mut indexer = TradeIndexer(TestHandler::default());
+
+    run_indexer(
+        &mut indexer,
+        NeardataServerProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(124_427_306..=124_427_323),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .0
+            .pool_swaps
+            .get(&"acejapan.tg".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![
+            (
+                RawPoolSwap {
+                    pool: "REF-5222".to_string(),
+                    token_in: "dd.tg".parse().unwrap(),
+                    token_out: "wrap.near".parse().unwrap(),
+                    amount_in: 933200000000,
+                    amount_out: 1694993438147166311514743
+                },
+                TradeContext {
+                    trader: "acejapan.tg".parse().unwrap(),
+                    block_height: 124427317,
+                    block_timestamp_nanosec: 1722139552074832400,
+                    transaction_id: "BJJiADeRfDhgvTNbmyJz3Xj1P86iQmX9791RXo33KxCN"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "4wVWyZd2k1vbSQCw4HzvvKVqrgsUYRiEoiRDQUtYX5Yu"
+                        .parse()
+                        .unwrap()
+                }
+            ),
+            (
+                RawPoolSwap {
+                    pool: "REF-3879".to_string(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "usdt.tether-token.near".parse().unwrap(),
+                    amount_in: 1694993438147166311514743,
+                    amount_out: 9458256
+                },
+                TradeContext {
+                    trader: "acejapan.tg".parse().unwrap(),
+                    block_height: 124427317,
+                    block_timestamp_nanosec: 1722139552074832400,
+                    transaction_id: "BJJiADeRfDhgvTNbmyJz3Xj1P86iQmX9791RXo33KxCN"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "4wVWyZd2k1vbSQCw4HzvvKVqrgsUYRiEoiRDQUtYX5Yu"
+                        .parse()
+                        .unwrap()
+                }
+            )
+        ]
+    );
+    assert_eq!(
+        *indexer
+            .0
+            .balance_change_swaps
+            .get(&"acejapan.tg".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("usdt.tether-token.near".parse().unwrap(), 9458256),
+                    ("dd.tg".parse().unwrap(), -933200000000),
+                ]),
+                pool_swaps: vec![
+                    RawPoolSwap {
+                        pool: "REF-5222".to_string(),
+                        token_in: "dd.tg".parse().unwrap(),
+                        token_out: "wrap.near".parse().unwrap(),
+                        amount_in: 933200000000,
+                        amount_out: 1694993438147166311514743
+                    },
+                    RawPoolSwap {
+                        pool: "REF-3879".to_string(),
+                        token_in: "wrap.near".parse().unwrap(),
+                        token_out: "usdt.tether-token.near".parse().unwrap(),
+                        amount_in: 1694993438147166311514743,
+                        amount_out: 9458256
+                    }
+                ]
+            },
+            TradeContext {
+                trader: "acejapan.tg".parse().unwrap(),
+                block_height: 124427317,
+                block_timestamp_nanosec: 1722139552074832400,
+                transaction_id: "BJJiADeRfDhgvTNbmyJz3Xj1P86iQmX9791RXo33KxCN"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "4wVWyZd2k1vbSQCw4HzvvKVqrgsUYRiEoiRDQUtYX5Yu"
+                    .parse()
+                    .unwrap()
+            }
+        )]
     );
 }
