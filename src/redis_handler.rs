@@ -53,6 +53,7 @@ impl TradeEventHandler for PushToRedisStream {
                 },
                 self.max_stream_size,
             )
+            .await
             .expect("Failed to emit pool event");
     }
 
@@ -75,6 +76,7 @@ impl TradeEventHandler for PushToRedisStream {
                 },
                 self.max_stream_size,
             )
+            .await
             .expect("Failed to emit swap event");
     }
 
@@ -170,6 +172,7 @@ impl TradeEventHandler for PushToRedisStream {
                 },
                 self.max_stream_size,
             )
+            .await
             .expect("Failed to emit pool change event");
     }
 }
