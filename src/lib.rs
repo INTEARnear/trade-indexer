@@ -11,6 +11,7 @@ use inindexer::{
     IncompleteTransaction, Indexer, TransactionReceipt,
 };
 use ref_trade_detection::REF_CONTRACT_ID;
+use ref_trade_detection::TESTNET_REF_CONTRACT_ID;
 
 use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
 
@@ -46,6 +47,11 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
     type Error = String;
 
     async fn process_block(&mut self, block: &StreamerMessage) -> Result<(), Self::Error> {
+        let ref_contract_id = if self.is_testnet {
+            TESTNET_REF_CONTRACT_ID
+        } else {
+            REF_CONTRACT_ID
+        };
         for shard in block.shards.iter() {
             for state_change in shard.state_changes.iter() {
                 if let StateChangeValueView::DataUpdate {
@@ -54,7 +60,7 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                     value,
                 } = &state_change.value
                 {
-                    if account_id == REF_CONTRACT_ID {
+                    if account_id == ref_contract_id {
                         let receipt_id =
                             if let StateChangeCauseView::ReceiptProcessing { receipt_hash } =
                                 &state_change.cause
