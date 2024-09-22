@@ -6,15 +6,19 @@ use inindexer::{
     run_indexer, BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
 };
 
+use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
 use crate::{
-    ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap,
-    TradeContext, TradeEventHandler, TradeIndexer,
+    ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolType, RawPoolSwap, TradeContext,
+    TradeEventHandler, TradeIndexer,
 };
 
 #[derive(Default)]
 struct TestHandler {
     pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
     balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
+    state_changes: Vec<PoolChangeEvent>,
+    memecooking_deposits: Vec<(DepositEvent, TradeContext)>,
+    memecooking_withdraws: Vec<(WithdrawEvent, TradeContext)>,
 }
 
 #[async_trait]
@@ -37,12 +41,25 @@ impl TradeEventHandler for TestHandler {
             .push((balance_changes, context));
     }
 
-    async fn on_pool_change(&mut self, _pool: PoolChangeEvent) {}
+    async fn on_pool_change(&mut self, pool: PoolChangeEvent) {
+        self.state_changes.push(pool);
+    }
+
+    async fn on_memecooking_deposit(&mut self, context: TradeContext, deposit: DepositEvent) {
+        self.memecooking_deposits.push((deposit, context));
+    }
+
+    async fn on_memecooking_withdraw(&mut self, context: TradeContext, withdraw: WithdrawEvent) {
+        self.memecooking_withdraws.push((withdraw, context));
+    }
 }
 
 #[tokio::test]
 async fn detects_ref_trades() {
-    let mut indexer = TradeIndexer(TestHandler::default());
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
 
     run_indexer(
         &mut indexer,
@@ -61,7 +78,7 @@ async fn detects_ref_trades() {
 
     assert_eq!(
         *indexer
-            .0
+            .handler
             .pool_swaps
             .get(&"skyto.near".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -88,7 +105,7 @@ async fn detects_ref_trades() {
     );
     assert_eq!(
         *indexer
-            .0
+            .handler
             .balance_change_swaps
             .get(&"skyto.near".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -126,7 +143,10 @@ async fn detects_ref_trades() {
 
 #[tokio::test]
 async fn detects_ref_multistep_trades() {
-    let mut indexer = TradeIndexer(TestHandler::default());
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
 
     run_indexer(
         &mut indexer,
@@ -145,7 +165,7 @@ async fn detects_ref_multistep_trades() {
 
     assert_eq!(
         *indexer
-            .0
+            .handler
             .pool_swaps
             .get(&"williamxx.near".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -214,7 +234,7 @@ async fn detects_ref_multistep_trades() {
     );
     assert_eq!(
         *indexer
-            .0
+            .handler
             .balance_change_swaps
             .get(&"williamxx.near".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -268,7 +288,10 @@ async fn detects_ref_multistep_trades() {
 
 #[tokio::test]
 async fn detects_ref_dragonbot_trades() {
-    let mut indexer = TradeIndexer(TestHandler::default());
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
 
     run_indexer(
         &mut indexer,
@@ -287,7 +310,7 @@ async fn detects_ref_dragonbot_trades() {
 
     assert_eq!(
         *indexer
-            .0
+            .handler
             .pool_swaps
             .get(
                 &"kxf05k08ps1ol3zgcwvmkam_dragon.dragon_bot.near"
@@ -320,7 +343,7 @@ async fn detects_ref_dragonbot_trades() {
     );
     assert_eq!(
         *indexer
-            .0
+            .handler
             .balance_change_swaps
             .get(
                 &"kxf05k08ps1ol3zgcwvmkam_dragon.dragon_bot.near"
@@ -364,7 +387,10 @@ async fn detects_ref_dragonbot_trades() {
 
 #[tokio::test]
 async fn detects_ref_arbitrage_trades() {
-    let mut indexer = TradeIndexer(TestHandler::default());
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
 
     run_indexer(
         &mut indexer,
@@ -383,7 +409,7 @@ async fn detects_ref_arbitrage_trades() {
 
     assert_eq!(
         *indexer
-            .0
+            .handler
             .pool_swaps
             .get(&"bot.marior.near".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -492,7 +518,7 @@ async fn detects_ref_arbitrage_trades() {
     );
     assert_eq!(
         *indexer
-            .0
+            .handler
             .balance_change_swaps
             .get(&"bot.marior.near".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -557,7 +583,10 @@ async fn detects_ref_arbitrage_trades() {
 
 #[tokio::test]
 async fn doesnt_detect_failed_ref_arbitrage_trades() {
-    let mut indexer = TradeIndexer(TestHandler::default());
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
 
     run_indexer(
         &mut indexer,
@@ -576,14 +605,14 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
 
     assert_eq!(
         indexer
-            .0
+            .handler
             .pool_swaps
             .get(&"bot.marior.near".parse::<AccountId>().unwrap()),
         None
     );
     assert_eq!(
         indexer
-            .0
+            .handler
             .balance_change_swaps
             .get(&"bot.marior.near".parse::<AccountId>().unwrap()),
         None
@@ -592,7 +621,10 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
 
 #[tokio::test]
 async fn doesnt_detect_failed_ref_trades() {
-    let mut indexer = TradeIndexer(TestHandler::default());
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
 
     run_indexer(
         &mut indexer,
@@ -611,14 +643,14 @@ async fn doesnt_detect_failed_ref_trades() {
 
     assert_eq!(
         indexer
-            .0
+            .handler
             .pool_swaps
             .get(&"slimegirl.near".parse::<AccountId>().unwrap()),
         None
     );
     assert_eq!(
         indexer
-            .0
+            .handler
             .balance_change_swaps
             .get(&"slimegirl.near".parse::<AccountId>().unwrap()),
         None
@@ -627,7 +659,10 @@ async fn doesnt_detect_failed_ref_trades() {
 
 #[tokio::test]
 async fn detects_delegate_ref_trades() {
-    let mut indexer = TradeIndexer(TestHandler::default());
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
 
     run_indexer(
         &mut indexer,
@@ -646,7 +681,7 @@ async fn detects_delegate_ref_trades() {
 
     assert_eq!(
         *indexer
-            .0
+            .handler
             .pool_swaps
             .get(&"alanmain.near".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -715,7 +750,7 @@ async fn detects_delegate_ref_trades() {
     );
     assert_eq!(
         *indexer
-            .0
+            .handler
             .balance_change_swaps
             .get(&"alanmain.near".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -769,34 +804,10 @@ async fn detects_delegate_ref_trades() {
 
 #[tokio::test]
 async fn detects_ref_state_changes() {
-    struct TestHandler {
-        state_changes: HashMap<PoolId, Vec<PoolChangeEvent>>,
-    }
-
-    #[async_trait]
-    impl TradeEventHandler for TestHandler {
-        async fn on_raw_pool_swap(&mut self, _context: TradeContext, _swap: RawPoolSwap) {}
-
-        async fn on_balance_change_swap(
-            &mut self,
-            _context: TradeContext,
-            _balance_changes: BalanceChangeSwap,
-        ) {
-        }
-
-        async fn on_pool_change(&mut self, pool: PoolChangeEvent) {
-            self.state_changes
-                .entry(pool.pool_id.clone())
-                .or_default()
-                .push(pool);
-        }
-    }
-
-    let handler = TestHandler {
-        state_changes: HashMap::new(),
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
     };
-
-    let mut indexer = TradeIndexer(handler);
 
     run_indexer(
         &mut indexer,
@@ -814,7 +825,7 @@ async fn detects_ref_state_changes() {
     .unwrap();
 
     assert_eq!(
-        *indexer.0.state_changes.get("REF-5059").unwrap(),
+        indexer.handler.state_changes,
         vec![PoolChangeEvent {
             pool_id: "REF-5059".to_owned(),
             receipt_id: "VPrcZiwgFqKgW9eev4CUKJ4TN8Jk1jSZ2sqFAHothnN"
@@ -852,7 +863,10 @@ async fn detects_ref_state_changes() {
 
 #[tokio::test]
 async fn detects_ref_hot_tg_trades() {
-    let mut indexer = TradeIndexer(TestHandler::default());
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
 
     run_indexer(
         &mut indexer,
@@ -871,7 +885,7 @@ async fn detects_ref_hot_tg_trades() {
 
     assert_eq!(
         *indexer
-            .0
+            .handler
             .pool_swaps
             .get(&"acejapan.tg".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -920,7 +934,7 @@ async fn detects_ref_hot_tg_trades() {
     );
     assert_eq!(
         *indexer
-            .0
+            .handler
             .balance_change_swaps
             .get(&"acejapan.tg".parse::<AccountId>().unwrap())
             .unwrap(),
@@ -957,6 +971,104 @@ async fn detects_ref_hot_tg_trades() {
                 receipt_id: "4wVWyZd2k1vbSQCw4HzvvKVqrgsUYRiEoiRDQUtYX5Yu"
                     .parse()
                     .unwrap()
+            }
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_memecooking_deposits() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: true,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataServerProvider::testnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(174_733_296..=174_733_302),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer.handler.memecooking_deposits,
+        vec![(
+            DepositEvent {
+                meme_id: 52,
+                account_id: "slime.testnet".parse().unwrap(),
+                amount: 2985000000000000000000000,
+                protocol_fee: 7500000000000000000000,
+                referrer: Some(
+                    "0xd51c5283b8727206bf9be2b2db4e5673efaf519c"
+                        .parse()
+                        .unwrap()
+                ),
+                referrer_fee: Some(7500000000000000000000)
+            },
+            TradeContext {
+                trader: "slime.testnet".parse().unwrap(),
+                block_height: 174733299,
+                block_timestamp_nanosec: 1726822053211742048,
+                transaction_id: "3JKqU16HucfRagV5gNEtjfkZFwV5xZMwiTa2pYVt7oxa"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "2acCdtPJUkp37aW6jT66hedowjczzycVB5YKHfA2gnjg"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_memecooking_withdraws() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: true,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataServerProvider::testnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(174_938_562..=174_938_567),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer.handler.memecooking_withdraws,
+        vec![(
+            WithdrawEvent {
+                meme_id: 53,
+                account_id: "slime.testnet".parse().unwrap(),
+                amount: 975100000000000000000000,
+                fee: 19900000000000000000000,
+            },
+            TradeContext {
+                trader: "slime.testnet".parse().unwrap(),
+                block_height: 174938564,
+                block_timestamp_nanosec: 1727027550926094610,
+                transaction_id: "FGf3e9QDEBLYGCA11K3z4QaeoZtBxDNrUys1iErgBMaQ"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "G6k8gYVVNAyf9XZC6H8Xby6mLx7SztAq8tgBLAUMK7e2"
+                    .parse()
+                    .unwrap(),
             }
         )]
     );

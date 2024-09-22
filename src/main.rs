@@ -21,10 +21,12 @@ async fn main() {
     .unwrap();
     let connection = ConnectionManager::new(client).await.unwrap();
 
-    let mut indexer =
-        trade_indexer::TradeIndexer(PushToRedisStream::new(connection, 100_000).await);
+    let mut indexer = trade_indexer::TradeIndexer {
+        handler: PushToRedisStream::new(connection, 100_000, true).await,
+        is_testnet: true,
+    };
 
-    let streamer = NeardataServerProvider::mainnet();
+    let streamer = NeardataServerProvider::testnet();
 
     run_indexer(
         &mut indexer,

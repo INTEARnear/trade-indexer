@@ -1,10 +1,18 @@
+use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
 use crate::{
     ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolType, RawPoolSwap, TradeContext,
     TradeEventHandler,
 };
 use async_trait::async_trait;
 use inevents_redis::RedisEventStream;
+use intear_events::events::trade::memecooking_deposit::MemeCookingDepositEvent;
+use intear_events::events::trade::memecooking_withdraw::MemeCookingWithdrawEvent;
+use intear_events::events::trade::trade_pool::TradePoolEvent;
+use intear_events::events::trade::trade_pool_change::TradePoolChangeEvent;
+use intear_events::events::trade::trade_swap::TradeSwapEvent;
 use intear_events::events::trade::{
+    memecooking_deposit::MemeCookingDepositEventData,
+    memecooking_withdraw::MemeCookingWithdrawEventData,
     trade_pool::TradePoolEventData,
     trade_pool_change::{
         RefPool, RefRatedSwapPool, RefSimplePool, RefStableSwapPool, RefSwapVolume,
@@ -18,15 +26,58 @@ pub struct PushToRedisStream {
     pool_stream: RedisEventStream<TradePoolEventData>,
     swap_stream: RedisEventStream<TradeSwapEventData>,
     pool_change_stream: RedisEventStream<TradePoolChangeEventData>,
+    meme_cooking_deposit_stream: RedisEventStream<MemeCookingDepositEventData>,
+    meme_cooking_withdraw_stream: RedisEventStream<MemeCookingWithdrawEventData>,
     max_stream_size: usize,
 }
 
 impl PushToRedisStream {
-    pub async fn new(connection: ConnectionManager, max_stream_size: usize) -> Self {
+    pub async fn new(
+        connection: ConnectionManager,
+        max_stream_size: usize,
+        is_testnet: bool,
+    ) -> Self {
         Self {
-            pool_stream: RedisEventStream::new(connection.clone(), "trade_pool"),
-            swap_stream: RedisEventStream::new(connection.clone(), "trade_swap"),
-            pool_change_stream: RedisEventStream::new(connection, "trade_pool_change"),
+            pool_stream: RedisEventStream::new(
+                connection.clone(),
+                if is_testnet {
+                    format!("{}_testnet", TradePoolEvent::ID)
+                } else {
+                    TradePoolEvent::ID.to_string()
+                },
+            ),
+            swap_stream: RedisEventStream::new(
+                connection.clone(),
+                if is_testnet {
+                    format!("{}_testnet", TradeSwapEvent::ID)
+                } else {
+                    TradeSwapEvent::ID.to_string()
+                },
+            ),
+            pool_change_stream: RedisEventStream::new(
+                connection.clone(),
+                if is_testnet {
+                    format!("{}_testnet", TradePoolChangeEvent::ID)
+                } else {
+                    TradePoolChangeEvent::ID.to_string()
+                },
+            ),
+            meme_cooking_deposit_stream: RedisEventStream::new(
+                connection.clone(),
+                if is_testnet {
+                    format!("{}_testnet", MemeCookingDepositEvent::ID)
+                } else {
+                    MemeCookingDepositEvent::ID.to_string()
+                },
+            ),
+            meme_cooking_withdraw_stream: RedisEventStream::new(
+                connection,
+                if is_testnet {
+                    format!("{}_testnet", MemeCookingWithdrawEvent::ID)
+                } else {
+                    MemeCookingWithdrawEvent::ID.to_string()
+                },
+            ),
             max_stream_size,
         }
     }
@@ -174,5 +225,49 @@ impl TradeEventHandler for PushToRedisStream {
             )
             .await
             .expect("Failed to emit pool change event");
+    }
+
+    async fn on_memecooking_deposit(&mut self, context: TradeContext, deposit: DepositEvent) {
+        self.meme_cooking_deposit_stream
+            .emit_event(
+                context.block_height,
+                MemeCookingDepositEventData {
+                    meme_id: deposit.meme_id,
+                    amount: deposit.amount,
+                    protocol_fee: deposit.protocol_fee,
+                    referrer: deposit.referrer,
+                    referrer_fee: deposit.referrer_fee,
+
+                    trader: context.trader,
+                    block_height: context.block_height,
+                    block_timestamp_nanosec: context.block_timestamp_nanosec,
+                    transaction_id: context.transaction_id,
+                    receipt_id: context.receipt_id,
+                },
+                self.max_stream_size,
+            )
+            .await
+            .expect("Failed to emit meme cooking deposit event");
+    }
+
+    async fn on_memecooking_withdraw(&mut self, context: TradeContext, withdraw: WithdrawEvent) {
+        self.meme_cooking_withdraw_stream
+            .emit_event(
+                context.block_height,
+                MemeCookingWithdrawEventData {
+                    meme_id: withdraw.meme_id,
+                    amount: withdraw.amount,
+                    fee: withdraw.fee,
+
+                    trader: context.trader,
+                    block_height: context.block_height,
+                    block_timestamp_nanosec: context.block_timestamp_nanosec,
+                    transaction_id: context.transaction_id,
+                    receipt_id: context.receipt_id,
+                },
+                self.max_stream_size,
+            )
+            .await
+            .expect("Failed to emit meme cooking withdraw event");
     }
 }

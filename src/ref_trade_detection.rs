@@ -11,8 +11,11 @@ use inindexer::{
 };
 use serde::Deserialize;
 
-use crate::{BalanceChangeSwap, PoolId, RawPoolSwap, TradeContext, TradeEventHandler};
+use crate::{
+    find_parent_receipt, BalanceChangeSwap, PoolId, RawPoolSwap, TradeContext, TradeEventHandler,
+};
 
+pub const TESTNET_REF_CONTRACT_ID: &str = "ref-finance-101.testnet";
 pub const REF_CONTRACT_ID: &str = "v2.ref-finance.near";
 
 pub async fn detect(
@@ -20,8 +23,14 @@ pub async fn detect(
     transaction: &IncompleteTransaction,
     block: &StreamerMessage,
     handler: &mut impl TradeEventHandler,
+    is_testnet: bool,
 ) {
-    if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == REF_CONTRACT_ID {
+    let ref_contract_id = if is_testnet {
+        TESTNET_REF_CONTRACT_ID
+    } else {
+        REF_CONTRACT_ID
+    };
+    if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == ref_contract_id {
         let mut raw_pool_swaps = vec![];
         let mut balance_changes = HashMap::new();
         let mut trader = receipt.receipt.receipt.predecessor_id.clone();
@@ -223,23 +232,4 @@ struct Action {
     token_out: AccountId,
     #[serde(with = "dec_format")]
     min_amount_out: Balance,
-}
-
-fn find_parent_receipt<'a>(
-    transaction: &'a IncompleteTransaction,
-    receipt: &TransactionReceipt,
-) -> Option<&'a TransactionReceipt> {
-    transaction.receipts.iter().find_map(|r| {
-        if let Some(r) = r.1 {
-            if r.receipt
-                .execution_outcome
-                .outcome
-                .receipt_ids
-                .contains(&receipt.receipt.receipt.receipt_id)
-            {
-                return Some(r);
-            }
-        }
-        None
-    })
 }

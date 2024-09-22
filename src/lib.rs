@@ -12,6 +12,9 @@ use inindexer::{
 };
 use ref_trade_detection::REF_CONTRACT_ID;
 
+use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
+
+mod meme_cooking_deposit_detection;
 pub mod redis_handler;
 mod ref_finance_state;
 mod ref_trade_detection;
@@ -20,7 +23,10 @@ mod tests;
 
 type PoolId = String;
 
-pub struct TradeIndexer<T: TradeEventHandler>(pub T);
+pub struct TradeIndexer<T: TradeEventHandler> {
+    pub handler: T,
+    pub is_testnet: bool,
+}
 
 #[async_trait]
 pub trait TradeEventHandler: Send + Sync + 'static {
@@ -31,6 +37,8 @@ pub trait TradeEventHandler: Send + Sync + 'static {
         balance_changes: BalanceChangeSwap,
     );
     async fn on_pool_change(&mut self, pool: PoolChangeEvent);
+    async fn on_memecooking_deposit(&mut self, context: TradeContext, deposit: DepositEvent);
+    async fn on_memecooking_withdraw(&mut self, context: TradeContext, withdraw: WithdrawEvent);
 }
 
 #[async_trait]
@@ -91,7 +99,7 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                 block_height: block.block.header.height,
                                 pool: PoolType::Ref(pool),
                             };
-                            self.0.on_pool_change(pool).await;
+                            self.handler.on_pool_change(pool).await;
                         }
                     }
                 }
@@ -106,7 +114,22 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
         transaction: &IncompleteTransaction,
         block: &StreamerMessage,
     ) -> Result<(), Self::Error> {
-        ref_trade_detection::detect(receipt, transaction, block, &mut self.0).await;
+        ref_trade_detection::detect(
+            receipt,
+            transaction,
+            block,
+            &mut self.handler,
+            self.is_testnet,
+        )
+        .await;
+        meme_cooking_deposit_detection::detect(
+            receipt,
+            transaction,
+            block,
+            &mut self.handler,
+            self.is_testnet,
+        )
+        .await;
         Ok(())
     }
 }
@@ -147,4 +170,23 @@ pub struct PoolChangeEvent {
 #[derive(Debug, PartialEq)]
 pub enum PoolType {
     Ref(ref_finance_state::Pool),
+}
+
+pub(crate) fn find_parent_receipt<'a>(
+    transaction: &'a IncompleteTransaction,
+    receipt: &TransactionReceipt,
+) -> Option<&'a TransactionReceipt> {
+    transaction.receipts.iter().find_map(|r| {
+        if let Some(r) = r.1 {
+            if r.receipt
+                .execution_outcome
+                .outcome
+                .receipt_ids
+                .contains(&receipt.receipt.receipt.receipt_id)
+            {
+                return Some(r);
+            }
+        }
+        None
+    })
 }
