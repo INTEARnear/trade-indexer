@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use inindexer::near_utils::dec_format_vec;
 use inindexer::{
     near_indexer_primitives::{
         types::{AccountId, Balance},
@@ -57,13 +58,13 @@ pub async fn detect(
                         {
                             trader = caller_receipt.receipt.receipt.predecessor_id.clone();
                         }
-                        if let Ok(call) = serde_json::from_slice::<FtTransferCall>(args) {
+                        if let Ok(call) = serde_json::from_slice::<FtTransferCallArgs>(args) {
                             if let Ok(call) =
-                                serde_json::from_str::<FtTransferCallExecute>(&call.msg)
+                                serde_json::from_str::<FtTransferCallArgsExecute>(&call.msg)
                             {
                                 swap_actions.extend(call.actions);
                             } else if let Ok(call) =
-                                serde_json::from_str::<FtTransferCallHotZap>(&call.msg)
+                                serde_json::from_str::<FtTransferCallArgsHotZap>(&call.msg)
                             {
                                 swap_actions.extend(call.hot_zap_actions);
                             }
@@ -75,6 +76,113 @@ pub async fn detect(
                     } else if method_name == "execute_actions" {
                         if let Ok(call) = serde_json::from_slice::<MethodExecuteActions>(args) {
                             swap_actions.extend(call.actions);
+                        }
+                    } else if method_name == "add_liquidity" {
+                        if let Ok(call) =
+                            serde_json::from_slice::<FtTransferCallArgsAddLiquidity>(args)
+                        {
+                            let pool_id = call.pool_id;
+                            for log in &receipt.receipt.execution_outcome.outcome.logs {
+                                // format: "Liquidity added ["999999999999999915648607 wrap.near", "15869989324782287999975226 intel.tkn.near"], minted 514844781930897970949 shares"
+                                let Some(log) = log.strip_prefix("Liquidity added [\"") else {
+                                    return;
+                                };
+                                let Some(log) = log.strip_suffix(" shares") else {
+                                    return;
+                                };
+                                let Some((amounts, shares)) = log.split_once("\"], minted ") else {
+                                    return;
+                                };
+                                let amounts = amounts.split("\", \"").collect::<Vec<_>>();
+                                let Ok(_shares) = shares.parse::<Balance>() else {
+                                    return;
+                                };
+                                let mut tokens = HashMap::new();
+                                for amount in amounts {
+                                    let Some((amount, token)) = amount.split_once(' ') else {
+                                        return;
+                                    };
+                                    let Ok(amount) = amount.parse::<Balance>() else {
+                                        return;
+                                    };
+                                    let Ok(token) = token.parse::<AccountId>() else {
+                                        return;
+                                    };
+                                    tokens.insert(token, amount as i128);
+                                }
+                                handler
+                                    .on_liquidity_pool(
+                                        TradeContext {
+                                            trader: trader.clone(),
+                                            block_height: block.block.header.height,
+                                            block_timestamp_nanosec: block
+                                                .block
+                                                .header
+                                                .timestamp_nanosec
+                                                as u128,
+                                            transaction_id: transaction
+                                                .transaction
+                                                .transaction
+                                                .hash,
+                                            receipt_id: receipt.receipt.receipt.receipt_id,
+                                        },
+                                        create_ref_pool_id(pool_id),
+                                        tokens,
+                                    )
+                                    .await;
+                            }
+                        }
+                    } else if method_name == "remove_liquidity" {
+                        if let Ok(call) = serde_json::from_slice::<RemoveLiquidity>(args) {
+                            let pool_id = call.pool_id;
+                            for log in &receipt.receipt.execution_outcome.outcome.logs {
+                                // format: "514844781930897970949 shares of liquidity removed: receive back ["1000312838374558764552331 wrap.near", "15865198314126424586378752 intel.tkn.near"]"
+                                let Some((shares, tokens)) = log
+                                    .split_once(" shares of liquidity removed: receive back [\"")
+                                else {
+                                    return;
+                                };
+                                let Ok(_shares) = shares.parse::<Balance>() else {
+                                    return;
+                                };
+                                let Some(tokens) = tokens.strip_suffix("\"]") else {
+                                    return;
+                                };
+                                let tokens = tokens.split("\", \"").collect::<Vec<_>>();
+                                let mut amounts = HashMap::new();
+                                for token in tokens {
+                                    let Some((amount, token)) = token.split_once(' ') else {
+                                        return;
+                                    };
+                                    let Ok(amount) = amount.parse::<Balance>() else {
+                                        return;
+                                    };
+                                    let Ok(token) = token.parse::<AccountId>() else {
+                                        return;
+                                    };
+                                    amounts.insert(token, -(amount as i128));
+                                }
+                                handler
+                                    .on_liquidity_pool(
+                                        TradeContext {
+                                            trader: trader.clone(),
+                                            block_height: block.block.header.height,
+                                            block_timestamp_nanosec: block
+                                                .block
+                                                .header
+                                                .timestamp_nanosec
+                                                as u128,
+                                            transaction_id: transaction
+                                                .transaction
+                                                .transaction
+                                                .hash,
+                                            receipt_id: receipt.receipt.receipt.receipt_id,
+                                        },
+                                        create_ref_pool_id(pool_id),
+                                        amounts,
+                                    )
+                                    .await;
+                            }
                         }
                     }
                     // There could be some edge cases with both "swap" and "ft_transfer_call" as
@@ -143,10 +251,10 @@ pub async fn detect(
 
         if swap_actions.len() != swap_logs_in_receipt.len() {
             log::warn!(
-                    "Invalid number of actions found in receipt {:?} for transaction {:?}: {swap_actions:?}",
-                    receipt.receipt.receipt.receipt,
-                    transaction.transaction.transaction.hash
-                );
+                "Invalid number of actions found in receipt {:?} for transaction {:?}: {swap_actions:?}",
+                receipt.receipt.receipt.receipt,
+                transaction.transaction.transaction.hash
+            );
             return;
         }
 
@@ -207,19 +315,38 @@ struct MethodExecuteActions {
 }
 
 #[derive(Deserialize, Debug)]
-struct FtTransferCall {
+struct FtTransferCallArgs {
     /// Json string that represents either FtTransferCallExecute or FtTransferCallHotZap
     msg: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct FtTransferCallExecute {
+struct FtTransferCallArgsExecute {
     actions: Vec<Action>,
 }
 
 #[derive(Deserialize, Debug)]
-struct FtTransferCallHotZap {
+struct FtTransferCallArgsHotZap {
     hot_zap_actions: Vec<Action>,
+}
+
+#[derive(Deserialize, Debug)]
+struct FtTransferCallArgsAddLiquidity {
+    pool_id: u64,
+    #[serde(with = "dec_format_vec")]
+    #[allow(dead_code)]
+    amounts: Vec<Balance>,
+}
+
+#[derive(Deserialize, Debug)]
+struct RemoveLiquidity {
+    pool_id: u64,
+    #[serde(with = "dec_format")]
+    #[allow(dead_code)]
+    shares: Balance,
+    #[serde(with = "dec_format_vec")]
+    #[allow(dead_code)]
+    min_amounts: Vec<Balance>,
 }
 
 #[derive(Deserialize, Debug)]

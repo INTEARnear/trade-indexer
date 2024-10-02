@@ -1,10 +1,14 @@
+use std::collections::HashMap;
+
 use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
 use crate::{
-    ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolType, RawPoolSwap, TradeContext,
-    TradeEventHandler,
+    ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap,
+    TradeContext, TradeEventHandler,
 };
 use async_trait::async_trait;
 use inevents_redis::RedisEventStream;
+use inindexer::near_indexer_primitives::types::AccountId;
+use intear_events::events::trade::liquidity_pool::{LiquidityPoolEvent, LiquidityPoolEventData};
 use intear_events::events::trade::memecooking_deposit::MemeCookingDepositEvent;
 use intear_events::events::trade::memecooking_withdraw::MemeCookingWithdrawEvent;
 use intear_events::events::trade::trade_pool::TradePoolEvent;
@@ -28,6 +32,7 @@ pub struct PushToRedisStream {
     pool_change_stream: RedisEventStream<TradePoolChangeEventData>,
     meme_cooking_deposit_stream: RedisEventStream<MemeCookingDepositEventData>,
     meme_cooking_withdraw_stream: RedisEventStream<MemeCookingWithdrawEventData>,
+    liquidity_pool_stream: RedisEventStream<LiquidityPoolEventData>,
     max_stream_size: usize,
 }
 
@@ -71,11 +76,19 @@ impl PushToRedisStream {
                 },
             ),
             meme_cooking_withdraw_stream: RedisEventStream::new(
-                connection,
+                connection.clone(),
                 if is_testnet {
                     format!("{}_testnet", MemeCookingWithdrawEvent::ID)
                 } else {
                     MemeCookingWithdrawEvent::ID.to_string()
+                },
+            ),
+            liquidity_pool_stream: RedisEventStream::new(
+                connection.clone(),
+                if is_testnet {
+                    format!("{}_testnet", LiquidityPoolEvent::ID)
+                } else {
+                    LiquidityPoolEvent::ID.to_string()
                 },
             ),
             max_stream_size,
@@ -269,5 +282,29 @@ impl TradeEventHandler for PushToRedisStream {
             )
             .await
             .expect("Failed to emit meme cooking withdraw event");
+    }
+
+    async fn on_liquidity_pool(
+        &mut self,
+        context: TradeContext,
+        pool_id: PoolId,
+        tokens: HashMap<AccountId, i128>,
+    ) {
+        self.liquidity_pool_stream
+            .emit_event(
+                context.block_height,
+                LiquidityPoolEventData {
+                    pool: pool_id,
+                    tokens,
+                    provider_account_id: context.trader,
+                    block_height: context.block_height,
+                    block_timestamp_nanosec: context.block_timestamp_nanosec,
+                    transaction_id: context.transaction_id,
+                    receipt_id: context.receipt_id,
+                },
+                self.max_stream_size,
+            )
+            .await
+            .expect("Failed to emit liquidity pool event");
     }
 }

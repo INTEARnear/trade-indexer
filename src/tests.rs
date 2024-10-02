@@ -8,8 +8,8 @@ use inindexer::{
 
 use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
 use crate::{
-    ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolType, RawPoolSwap, TradeContext,
-    TradeEventHandler, TradeIndexer,
+    ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap,
+    TradeContext, TradeEventHandler, TradeIndexer,
 };
 
 #[derive(Default)]
@@ -19,6 +19,7 @@ struct TestHandler {
     state_changes: Vec<PoolChangeEvent>,
     memecooking_deposits: Vec<(DepositEvent, TradeContext)>,
     memecooking_withdraws: Vec<(WithdrawEvent, TradeContext)>,
+    liquidity_pool_events: Vec<(TradeContext, PoolId, HashMap<AccountId, i128>)>,
 }
 
 #[async_trait]
@@ -51,6 +52,15 @@ impl TradeEventHandler for TestHandler {
 
     async fn on_memecooking_withdraw(&mut self, context: TradeContext, withdraw: WithdrawEvent) {
         self.memecooking_withdraws.push((withdraw, context));
+    }
+
+    async fn on_liquidity_pool(
+        &mut self,
+        context: TradeContext,
+        pool_id: PoolId,
+        tokens: HashMap<AccountId, i128>,
+    ) {
+        self.liquidity_pool_events.push((context, pool_id, tokens));
     }
 }
 
@@ -1070,6 +1080,102 @@ async fn detects_memecooking_withdraws() {
                     .parse()
                     .unwrap(),
             }
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_ref_liquidity_add() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataServerProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(129_352_974..=129_352_978),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        indexer.handler.liquidity_pool_events,
+        vec![(
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 129352975,
+                block_timestamp_nanosec: 1727829382059005601,
+                transaction_id: "HyaTXZkaEDhPouF3L2AfmE4Pg8epP2kzX2d4jxgvnknE"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "GFU7m8uKS7unATiG6KSPjqa2zBjH1BaVoJMSQrR2rkF6"
+                    .parse()
+                    .unwrap(),
+            },
+            "REF-4663".to_owned(),
+            HashMap::from_iter([
+                ("wrap.near".parse().unwrap(), 999999999999999915648607),
+                (
+                    "intel.tkn.near".parse().unwrap(),
+                    15869989324782287999975226
+                )
+            ])
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_ref_liquidity_remove() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataServerProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(129_364_250..=129_364_254),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        indexer.handler.liquidity_pool_events,
+        vec![(
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 129364252,
+                block_timestamp_nanosec: 1727842012958701333,
+                transaction_id: "7B124NAr1MktLjGbjiYFPBP1guXSkgp5TzAJvFzmX4xb"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "89gwSxyXaWDABkjgRSpRTKVEced9RpCX2UT8uXR5FsJR"
+                    .parse()
+                    .unwrap(),
+            },
+            "REF-4663".to_owned(),
+            HashMap::from_iter([
+                ("wrap.near".parse().unwrap(), -1000312838374558764552331),
+                (
+                    "intel.tkn.near".parse().unwrap(),
+                    -15865198314126424586378752
+                )
+            ])
         )]
     );
 }

@@ -40,6 +40,12 @@ pub trait TradeEventHandler: Send + Sync + 'static {
     async fn on_pool_change(&mut self, pool: PoolChangeEvent);
     async fn on_memecooking_deposit(&mut self, context: TradeContext, deposit: DepositEvent);
     async fn on_memecooking_withdraw(&mut self, context: TradeContext, withdraw: WithdrawEvent);
+    async fn on_liquidity_pool(
+        &mut self,
+        context: TradeContext,
+        pool_id: PoolId,
+        tokens: HashMap<AccountId, i128>,
+    );
 }
 
 #[async_trait]
