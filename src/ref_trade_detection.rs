@@ -35,7 +35,7 @@ pub async fn detect(
         let mut raw_pool_swaps = vec![];
         let mut balance_changes = HashMap::new();
         let mut trader = receipt.receipt.receipt.predecessor_id.clone();
-        let mut swap_actions = vec![];
+        let mut swap_action_pools = vec![];
         let mut swap_logs_in_receipt = Vec::new();
         if let ReceiptEnumView::Action { actions, .. } = &receipt.receipt.receipt.receipt {
             for action in actions {
@@ -62,20 +62,26 @@ pub async fn detect(
                             if let Ok(call) =
                                 serde_json::from_str::<FtTransferCallArgsExecute>(&call.msg)
                             {
-                                swap_actions.extend(call.actions);
+                                swap_action_pools
+                                    .extend(call.actions.into_iter().map(|a| a.pool_id))
                             } else if let Ok(call) =
                                 serde_json::from_str::<FtTransferCallArgsHotZap>(&call.msg)
                             {
-                                swap_actions.extend(call.hot_zap_actions);
+                                swap_action_pools
+                                    .extend(call.hot_zap_actions.into_iter().map(|a| a.pool_id));
                             }
                         }
                     } else if method_name == "swap" {
                         if let Ok(call) = serde_json::from_slice::<MethodSwap>(args) {
-                            swap_actions.extend(call.actions);
+                            swap_action_pools.extend(call.actions.into_iter().map(|a| a.pool_id));
+                        }
+                    } else if method_name == "swap_by_output" {
+                        if let Ok(call) = serde_json::from_slice::<MethodSwapByOutput>(args) {
+                            swap_action_pools.extend(call.actions.into_iter().map(|a| a.pool_id));
                         }
                     } else if method_name == "execute_actions" {
                         if let Ok(call) = serde_json::from_slice::<MethodExecuteActions>(args) {
-                            swap_actions.extend(call.actions);
+                            swap_action_pools.extend(call.actions.into_iter().map(|a| a.pool_id));
                         }
                     } else if method_name == "add_liquidity" {
                         if let Ok(call) =
@@ -215,7 +221,10 @@ pub async fn detect(
         }
 
         for log in &receipt.receipt.execution_outcome.outcome.logs {
-            if let Some(log) = log.strip_prefix("Swapped ") {
+            if let (Some(log), _) | (_, Some(log)) = (
+                log.strip_prefix("Swapped "),
+                log.strip_prefix("Swap_by_output "),
+            ) {
                 if let Some((token_in, token_out)) = log.split_once(" for ") {
                     let token_out = token_out.split(',').next().unwrap();
                     let (amount_in, token_in) = token_in.split_once(' ').unwrap();
@@ -249,9 +258,9 @@ pub async fn detect(
             }
         }
 
-        if swap_actions.len() != swap_logs_in_receipt.len() {
+        if swap_action_pools.len() != swap_logs_in_receipt.len() {
             log::warn!(
-                "Invalid number of actions found in receipt {:?} for transaction {:?}: {swap_actions:?}",
+                "Invalid number of actions found in receipt {:?} for transaction {:?}: {swap_action_pools:?}",
                 receipt.receipt.receipt.receipt,
                 transaction.transaction.transaction.hash
             );
@@ -263,7 +272,7 @@ pub async fn detect(
                 .into_iter()
                 .enumerate()
                 .map(|(i, swap)| RawPoolSwap {
-                    pool: create_ref_pool_id(swap_actions[i].pool_id),
+                    pool: create_ref_pool_id(swap_action_pools[i]),
                     token_in: swap.token_in,
                     token_out: swap.token_out,
                     amount_in: swap.amount_in,
@@ -307,6 +316,11 @@ pub fn create_ref_pool_id(pool_id: u64) -> PoolId {
 #[derive(Deserialize, Debug)]
 struct MethodSwap {
     actions: Vec<Action>,
+}
+
+#[derive(Deserialize, Debug)]
+struct MethodSwapByOutput {
+    actions: Vec<SwapByOutputAction>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -359,4 +373,16 @@ struct Action {
     token_out: AccountId,
     #[serde(with = "dec_format")]
     min_amount_out: Balance,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+struct SwapByOutputAction {
+    pool_id: u64,
+    token_in: AccountId,
+    token_out: AccountId,
+    #[serde(with = "dec_format", default)]
+    amount_out: Option<Balance>,
+    #[serde(with = "dec_format", default)]
+    max_amount_in: Option<Balance>,
 }

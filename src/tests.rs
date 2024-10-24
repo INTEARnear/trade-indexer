@@ -1179,3 +1179,90 @@ async fn detects_ref_liquidity_remove() {
         )]
     );
 }
+
+#[tokio::test]
+async fn detects_ref_swap_by_output() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataServerProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(131_092_276..=131_092_280),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"fiery_drone.user.intear.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            RawPoolSwap {
+                pool: "REF-4663".to_owned(),
+                token_in: "wrap.near".parse().unwrap(),
+                token_out: "intel.tkn.near".parse().unwrap(),
+                amount_in: 706788683547272399546037,
+                amount_out: 14932514982037617660395520
+            },
+            TradeContext {
+                trader: "fiery_drone.user.intear.near".parse().unwrap(),
+                block_height: 131092278,
+                block_timestamp_nanosec: 1729777813518885252,
+                transaction_id: "39rFvuHaD7BXgteZHjPxkzxPmXN7ffmhhP3NKn6EjHoj"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "AeUZ7w79WAFjoJkAKogWWU8HSPo9rwjY6yhyjumM7Md5"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"fiery_drone.user.intear.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("wrap.near".parse().unwrap(), -706788683547272399546037),
+                    (
+                        "intel.tkn.near".parse().unwrap(),
+                        14932514982037617660395520,
+                    )
+                ]),
+                pool_swaps: vec![RawPoolSwap {
+                    pool: "REF-4663".to_owned(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "intel.tkn.near".parse().unwrap(),
+                    amount_in: 706788683547272399546037,
+                    amount_out: 14932514982037617660395520
+                },]
+            },
+            TradeContext {
+                trader: "fiery_drone.user.intear.near".parse().unwrap(),
+                block_height: 131092278,
+                block_timestamp_nanosec: 1729777813518885252,
+                transaction_id: "39rFvuHaD7BXgteZHjPxkzxPmXN7ffmhhP3NKn6EjHoj"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "AeUZ7w79WAFjoJkAKogWWU8HSPo9rwjY6yhyjumM7Md5"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+}
