@@ -1,6 +1,6 @@
 use trade_indexer::redis_handler::PushToRedisStream;
 
-use inindexer::neardata_server::NeardataServerProvider;
+use inindexer::neardata::NeardataProvider;
 use inindexer::{
     run_indexer, AutoContinue, BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
 };
@@ -26,7 +26,7 @@ async fn main() {
         is_testnet: true,
     };
 
-    let streamer = NeardataServerProvider::testnet();
+    let streamer = NeardataProvider::testnet();
 
     run_indexer(
         &mut indexer,

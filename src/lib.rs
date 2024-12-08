@@ -46,6 +46,7 @@ pub trait TradeEventHandler: Send + Sync + 'static {
         pool_id: PoolId,
         tokens: HashMap<AccountId, i128>,
     );
+    async fn flush_events(&mut self, block_height: BlockHeight);
 }
 
 #[async_trait]
@@ -142,6 +143,11 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
             self.is_testnet,
         )
         .await;
+        Ok(())
+    }
+
+    async fn process_block_end(&mut self, block: &StreamerMessage) -> Result<(), Self::Error> {
+        self.handler.flush_events(block.block.header.height).await;
         Ok(())
     }
 }

@@ -1,9 +1,10 @@
 use async_trait::async_trait;
+use inindexer::near_indexer_primitives::types::BlockHeight;
 use std::collections::HashMap;
 
 use inindexer::{
-    near_indexer_primitives::types::AccountId, neardata_server::NeardataServerProvider,
-    run_indexer, BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
+    near_indexer_primitives::types::AccountId, neardata::NeardataProvider, run_indexer,
+    BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
 };
 
 use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
@@ -62,6 +63,10 @@ impl TradeEventHandler for TestHandler {
     ) {
         self.liquidity_pool_events.push((context, pool_id, tokens));
     }
+
+    async fn flush_events(&mut self, _block_height: BlockHeight) {
+        // No-op for test handler
+    }
 }
 
 #[tokio::test]
@@ -73,7 +78,7 @@ async fn detects_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_210_089..=118_210_094),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -160,7 +165,7 @@ async fn detects_ref_multistep_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_214_454..=118_214_461),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -305,7 +310,7 @@ async fn detects_ref_dragonbot_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_209_234..=118_209_239),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -404,7 +409,7 @@ async fn detects_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_212_504..=118_212_506),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -600,7 +605,7 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_214_071..=118_214_073),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -638,7 +643,7 @@ async fn doesnt_detect_failed_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(112_087_639..=112_087_643),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -676,7 +681,7 @@ async fn detects_delegate_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(115_224_414..=115_224_420),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -821,7 +826,7 @@ async fn detects_ref_state_changes() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_210_089..=118_210_094),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -880,7 +885,7 @@ async fn detects_ref_hot_tg_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(124_427_306..=124_427_323),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -995,7 +1000,7 @@ async fn detects_memecooking_deposits() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::testnet(),
+        NeardataProvider::testnet(),
         IndexerOptions {
             range: BlockIterator::iterator(174_733_296..=174_733_302),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1047,7 +1052,7 @@ async fn detects_memecooking_withdraws() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::testnet(),
+        NeardataProvider::testnet(),
         IndexerOptions {
             range: BlockIterator::iterator(174_938_562..=174_938_567),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1093,7 +1098,7 @@ async fn detects_ref_liquidity_add() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(129_352_974..=129_352_978),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1141,7 +1146,7 @@ async fn detects_ref_liquidity_remove() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(129_364_250..=129_364_254),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1189,7 +1194,7 @@ async fn detects_ref_swap_by_output() {
 
     run_indexer(
         &mut indexer,
-        NeardataServerProvider::mainnet(),
+        NeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(131_092_276..=131_092_280),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
