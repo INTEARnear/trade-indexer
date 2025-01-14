@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use inindexer::near_indexer_primitives::types::BlockHeight;
+use intear_events::events::trade::trade_pool_change::AidolsPool;
 use std::collections::HashMap;
 
 use inindexer::{
@@ -1270,4 +1271,218 @@ async fn detects_ref_swap_by_output() {
             }
         )]
     );
+}
+
+#[tokio::test]
+async fn detects_aidols_buy() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(137365138..=137365144),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"slimetest.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            RawPoolSwap {
+                pool: "AIDOLS-tty.rugfactory.near".to_owned(),
+                token_in: "wrap.near".parse().unwrap(),
+                token_out: "tty.rugfactory.near".parse().unwrap(),
+                amount_in: 250000000000000000000000,
+                amount_out: 14347888469080300349131952747621
+            },
+            TradeContext {
+                trader: "slimetest.near".parse().unwrap(),
+                block_height: 137365141,
+                block_timestamp_nanosec: 1736889450143142963,
+                transaction_id: "5LGoL8F6oFvXXjE1Bd1uy2QGQbsSEJm5K688LMJrbj8g"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "8yPpmTyJL3SXJxMBdxStTFBbFZZyvFyTVeaKTHCWS8UB"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"slimetest.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("wrap.near".parse().unwrap(), -250000000000000000000000),
+                    (
+                        "tty.rugfactory.near".parse().unwrap(),
+                        14347888469080300349131952747621,
+                    )
+                ]),
+                pool_swaps: vec![RawPoolSwap {
+                    pool: "AIDOLS-tty.rugfactory.near".to_owned(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "tty.rugfactory.near".parse().unwrap(),
+                    amount_in: 250000000000000000000000,
+                    amount_out: 14347888469080300349131952747621
+                }]
+            },
+            TradeContext {
+                trader: "slimetest.near".parse().unwrap(),
+                block_height: 137365141,
+                block_timestamp_nanosec: 1736889450143142963,
+                transaction_id: "5LGoL8F6oFvXXjE1Bd1uy2QGQbsSEJm5K688LMJrbj8g"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "8yPpmTyJL3SXJxMBdxStTFBbFZZyvFyTVeaKTHCWS8UB"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_aidols_sell() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(137367226..=137367232),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"slimetest.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            RawPoolSwap {
+                pool: "AIDOLS-tty.rugfactory.near".to_owned(),
+                token_in: "tty.rugfactory.near".parse().unwrap(),
+                token_out: "wrap.near".parse().unwrap(),
+                amount_in: 14347888469080300349131952747621,
+                amount_out: 50000000000000000000001
+            },
+            TradeContext {
+                trader: "slimetest.near".parse().unwrap(),
+                block_height: 137367229,
+                block_timestamp_nanosec: 1736891754324614517,
+                transaction_id: "6gKuhoFsoMhr58HMr39rQkZXTbVG67hFgh3pQh5hvzqj"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "7ZcyKmeoJcDJWUKN1B2vfMqekjPKy1QV1Rv14YTWhjfL"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"slimetest.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("wrap.near".parse().unwrap(), 50000000000000000000001),
+                    (
+                        "tty.rugfactory.near".parse().unwrap(),
+                        -14347888469080300349131952747621
+                    ),
+                ]),
+                pool_swaps: vec![RawPoolSwap {
+                    pool: "AIDOLS-tty.rugfactory.near".to_owned(),
+                    token_in: "tty.rugfactory.near".parse().unwrap(),
+                    token_out: "wrap.near".parse().unwrap(),
+                    amount_in: 14347888469080300349131952747621,
+                    amount_out: 50000000000000000000001
+                }],
+            },
+            TradeContext {
+                trader: "slimetest.near".parse().unwrap(),
+                block_height: 137367229,
+                block_timestamp_nanosec: 1736891754324614517,
+                transaction_id: "6gKuhoFsoMhr58HMr39rQkZXTbVG67hFgh3pQh5hvzqj"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "7ZcyKmeoJcDJWUKN1B2vfMqekjPKy1QV1Rv14YTWhjfL"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_aidols_state_changes() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(137367226..=137367232),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(indexer.handler.state_changes.contains(&PoolChangeEvent {
+        pool_id: "AIDOLS-tty.rugfactory.near".to_owned(),
+        receipt_id: "7ZcyKmeoJcDJWUKN1B2vfMqekjPKy1QV1Rv14YTWhjfL"
+            .parse()
+            .unwrap(),
+        block_timestamp_nanosec: 1736891754324614517,
+        block_height: 137367229,
+        pool: PoolType::Aidols(AidolsPool {
+            token_id: "tty.rugfactory.near".parse().unwrap(),
+            token_hold: 985221674876847290640394088669950,
+            wnear_hold: 10149999999999999999999999,
+            is_deployed: false,
+            is_tradable: true
+        })
+    },));
 }
