@@ -1851,6 +1851,7 @@ dependencies = [
 [[package]]
 name = "intear-events"
 version = "0.1.0"
+source = "git+https://github.com/INTEARnear/intear-events#98771a375db491b4d1915b2f345c10bca8c07430"
 dependencies = [
  "actix",
  "async-trait",

@@ -1284,7 +1284,7 @@ async fn detects_aidols_buy() {
         &mut indexer,
         NeardataProvider::mainnet(),
         IndexerOptions {
-            range: BlockIterator::iterator(137365138..=137365144),
+            range: BlockIterator::iterator(137406119..=137406124),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
                 postfetch_blocks: 0,
@@ -1299,24 +1299,24 @@ async fn detects_aidols_buy() {
         *indexer
             .handler
             .pool_swaps
-            .get(&"slimetest.near".parse::<AccountId>().unwrap())
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
             .unwrap(),
         vec![(
             RawPoolSwap {
-                pool: "AIDOLS-tty.rugfactory.near".to_owned(),
+                pool: "AIDOLS-ponkeai.aidols.near".to_owned(),
                 token_in: "wrap.near".parse().unwrap(),
-                token_out: "tty.rugfactory.near".parse().unwrap(),
-                amount_in: 250000000000000000000000,
-                amount_out: 14347888469080300349131952747621
+                token_out: "ponkeai.aidols.near".parse().unwrap(),
+                amount_in: 300000000000000000000000,
+                amount_out: 399840063974410235905637744903
             },
             TradeContext {
-                trader: "slimetest.near".parse().unwrap(),
-                block_height: 137365141,
-                block_timestamp_nanosec: 1736889450143142963,
-                transaction_id: "5LGoL8F6oFvXXjE1Bd1uy2QGQbsSEJm5K688LMJrbj8g"
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 137406122,
+                block_timestamp_nanosec: 1736934912940183334,
+                transaction_id: "6xNcuGFB3Qs5hmDkavireqsxaENLGeJVw5St8PeXYnDz"
                     .parse()
                     .unwrap(),
-                receipt_id: "8yPpmTyJL3SXJxMBdxStTFBbFZZyvFyTVeaKTHCWS8UB"
+                receipt_id: "3KiybrbFAbDMxcTYDmZpjBrQX7pKLGoMreoHpLa6kEWs"
                     .parse()
                     .unwrap(),
             }
@@ -1326,33 +1326,33 @@ async fn detects_aidols_buy() {
         *indexer
             .handler
             .balance_change_swaps
-            .get(&"slimetest.near".parse::<AccountId>().unwrap())
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
             .unwrap(),
         vec![(
             BalanceChangeSwap {
                 balance_changes: HashMap::from_iter([
-                    ("wrap.near".parse().unwrap(), -250000000000000000000000),
+                    ("wrap.near".parse().unwrap(), -300000000000000000000000),
                     (
-                        "tty.rugfactory.near".parse().unwrap(),
-                        14347888469080300349131952747621,
+                        "ponkeai.aidols.near".parse().unwrap(),
+                        399840063974410235905637744903,
                     )
                 ]),
                 pool_swaps: vec![RawPoolSwap {
-                    pool: "AIDOLS-tty.rugfactory.near".to_owned(),
+                    pool: "AIDOLS-ponkeai.aidols.near".to_owned(),
                     token_in: "wrap.near".parse().unwrap(),
-                    token_out: "tty.rugfactory.near".parse().unwrap(),
-                    amount_in: 250000000000000000000000,
-                    amount_out: 14347888469080300349131952747621
+                    token_out: "ponkeai.aidols.near".parse().unwrap(),
+                    amount_in: 300000000000000000000000,
+                    amount_out: 399840063974410235905637744903
                 }]
             },
             TradeContext {
-                trader: "slimetest.near".parse().unwrap(),
-                block_height: 137365141,
-                block_timestamp_nanosec: 1736889450143142963,
-                transaction_id: "5LGoL8F6oFvXXjE1Bd1uy2QGQbsSEJm5K688LMJrbj8g"
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 137406122,
+                block_timestamp_nanosec: 1736934912940183334,
+                transaction_id: "6xNcuGFB3Qs5hmDkavireqsxaENLGeJVw5St8PeXYnDz"
                     .parse()
                     .unwrap(),
-                receipt_id: "8yPpmTyJL3SXJxMBdxStTFBbFZZyvFyTVeaKTHCWS8UB"
+                receipt_id: "3KiybrbFAbDMxcTYDmZpjBrQX7pKLGoMreoHpLa6kEWs"
                     .parse()
                     .unwrap(),
             }
@@ -1371,7 +1371,7 @@ async fn detects_aidols_sell() {
         &mut indexer,
         NeardataProvider::mainnet(),
         IndexerOptions {
-            range: BlockIterator::iterator(137367226..=137367232),
+            range: BlockIterator::iterator(137409038..=137409042),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
                 postfetch_blocks: 0,
@@ -1386,24 +1386,24 @@ async fn detects_aidols_sell() {
         *indexer
             .handler
             .pool_swaps
-            .get(&"slimetest.near".parse::<AccountId>().unwrap())
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
             .unwrap(),
         vec![(
             RawPoolSwap {
-                pool: "AIDOLS-tty.rugfactory.near".to_owned(),
-                token_in: "tty.rugfactory.near".parse().unwrap(),
+                pool: "AIDOLS-ponkeai.aidols.near".to_owned(),
+                token_in: "ponkeai.aidols.near".parse().unwrap(),
                 token_out: "wrap.near".parse().unwrap(),
-                amount_in: 14347888469080300349131952747621,
-                amount_out: 50000000000000000000001
+                amount_in: 399840063974410235905637744903,
+                amount_out: 100000000000000000000001
             },
             TradeContext {
-                trader: "slimetest.near".parse().unwrap(),
-                block_height: 137367229,
-                block_timestamp_nanosec: 1736891754324614517,
-                transaction_id: "6gKuhoFsoMhr58HMr39rQkZXTbVG67hFgh3pQh5hvzqj"
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 137409041,
+                block_timestamp_nanosec: 1736938235180073028,
+                transaction_id: "HcQJKrS9UHgqvJjMAyJSJvP8odkdky3tdR82mMjnrV6K"
                     .parse()
                     .unwrap(),
-                receipt_id: "7ZcyKmeoJcDJWUKN1B2vfMqekjPKy1QV1Rv14YTWhjfL"
+                receipt_id: "C7HHJztaC9ngMqMurUJQbbAb3HwtVJSuKcAjrPMM71yd"
                     .parse()
                     .unwrap(),
             }
@@ -1414,33 +1414,33 @@ async fn detects_aidols_sell() {
         *indexer
             .handler
             .balance_change_swaps
-            .get(&"slimetest.near".parse::<AccountId>().unwrap())
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
             .unwrap(),
         vec![(
             BalanceChangeSwap {
                 balance_changes: HashMap::from_iter([
-                    ("wrap.near".parse().unwrap(), 50000000000000000000001),
+                    ("wrap.near".parse().unwrap(), 100000000000000000000001),
                     (
-                        "tty.rugfactory.near".parse().unwrap(),
-                        -14347888469080300349131952747621
+                        "ponkeai.aidols.near".parse().unwrap(),
+                        -399840063974410235905637744903
                     ),
                 ]),
                 pool_swaps: vec![RawPoolSwap {
-                    pool: "AIDOLS-tty.rugfactory.near".to_owned(),
-                    token_in: "tty.rugfactory.near".parse().unwrap(),
+                    pool: "AIDOLS-ponkeai.aidols.near".to_owned(),
+                    token_in: "ponkeai.aidols.near".parse().unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
-                    amount_in: 14347888469080300349131952747621,
-                    amount_out: 50000000000000000000001
+                    amount_in: 399840063974410235905637744903,
+                    amount_out: 100000000000000000000001
                 }],
             },
             TradeContext {
-                trader: "slimetest.near".parse().unwrap(),
-                block_height: 137367229,
-                block_timestamp_nanosec: 1736891754324614517,
-                transaction_id: "6gKuhoFsoMhr58HMr39rQkZXTbVG67hFgh3pQh5hvzqj"
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 137409041,
+                block_timestamp_nanosec: 1736938235180073028,
+                transaction_id: "HcQJKrS9UHgqvJjMAyJSJvP8odkdky3tdR82mMjnrV6K"
                     .parse()
                     .unwrap(),
-                receipt_id: "7ZcyKmeoJcDJWUKN1B2vfMqekjPKy1QV1Rv14YTWhjfL"
+                receipt_id: "C7HHJztaC9ngMqMurUJQbbAb3HwtVJSuKcAjrPMM71yd"
                     .parse()
                     .unwrap(),
             }
@@ -1459,7 +1459,7 @@ async fn detects_aidols_state_changes() {
         &mut indexer,
         NeardataProvider::mainnet(),
         IndexerOptions {
-            range: BlockIterator::iterator(137367226..=137367232),
+            range: BlockIterator::iterator(137406979..=137406984),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
                 postfetch_blocks: 0,
@@ -1470,19 +1470,21 @@ async fn detects_aidols_state_changes() {
     .await
     .unwrap();
 
-    assert!(indexer.handler.state_changes.contains(&PoolChangeEvent {
-        pool_id: "AIDOLS-tty.rugfactory.near".to_owned(),
-        receipt_id: "7ZcyKmeoJcDJWUKN1B2vfMqekjPKy1QV1Rv14YTWhjfL"
-            .parse()
-            .unwrap(),
-        block_timestamp_nanosec: 1736891754324614517,
-        block_height: 137367229,
-        pool: PoolType::Aidols(AidolsPool {
-            token_id: "tty.rugfactory.near".parse().unwrap(),
-            token_hold: 985221674876847290640394088669950,
-            wnear_hold: 10149999999999999999999999,
-            is_deployed: false,
-            is_tradable: true
+    assert!(
+        dbg!(indexer.handler.state_changes).contains(&PoolChangeEvent {
+            pool_id: "AIDOLS-tganza.aidols.near".to_owned(),
+            receipt_id: "ErBeAEQyuWyab7ggYrzEZnPBo1sJA4GnJ6PhiCrMnn9y"
+                .parse()
+                .unwrap(),
+            block_timestamp_nanosec: 1736935882233587330,
+            block_height: 137406981,
+            pool: PoolType::Aidols(AidolsPool {
+                token_id: "tganza.aidols.near".parse().unwrap(),
+                token_hold: 1000000000000000000000000000000000,
+                wnear_hold: 500000000000000000000000000,
+                is_deployed: false,
+                is_tradable: true
+            })
         })
-    },));
+    );
 }
