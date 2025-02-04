@@ -22,7 +22,7 @@ async fn main() {
     let connection = ConnectionManager::new(client).await.unwrap();
 
     let mut indexer = trade_indexer::TradeIndexer {
-        handler: PushToRedisStream::new(connection, 100_000, true).await,
+        handler: PushToRedisStream::new(connection, 100_000).await,
         is_testnet: true,
     };
 

@@ -31,59 +31,25 @@ pub struct PushToRedisStream {
 }
 
 impl PushToRedisStream {
-    pub async fn new(
-        connection: ConnectionManager,
-        max_stream_size: usize,
-        is_testnet: bool,
-    ) -> Self {
+    pub async fn new(connection: ConnectionManager, max_stream_size: usize) -> Self {
         Self {
-            pool_stream: RedisEventStream::new(
-                connection.clone(),
-                if is_testnet {
-                    format!("{}_testnet", TradePoolEvent::ID)
-                } else {
-                    TradePoolEvent::ID.to_string()
-                },
-            ),
-            swap_stream: RedisEventStream::new(
-                connection.clone(),
-                if is_testnet {
-                    format!("{}_testnet", TradeSwapEvent::ID)
-                } else {
-                    TradeSwapEvent::ID.to_string()
-                },
-            ),
+            pool_stream: RedisEventStream::new(connection.clone(), TradePoolEvent::ID.to_string()),
+            swap_stream: RedisEventStream::new(connection.clone(), TradeSwapEvent::ID.to_string()),
             pool_change_stream: RedisEventStream::new(
                 connection.clone(),
-                if is_testnet {
-                    format!("{}_testnet", TradePoolChangeEvent::ID)
-                } else {
-                    TradePoolChangeEvent::ID.to_string()
-                },
+                TradePoolChangeEvent::ID.to_string(),
             ),
             meme_cooking_deposit_stream: RedisEventStream::new(
                 connection.clone(),
-                if is_testnet {
-                    format!("{}_testnet", MemeCookingDepositEvent::ID)
-                } else {
-                    MemeCookingDepositEvent::ID.to_string()
-                },
+                MemeCookingDepositEvent::ID.to_string(),
             ),
             meme_cooking_withdraw_stream: RedisEventStream::new(
                 connection.clone(),
-                if is_testnet {
-                    format!("{}_testnet", MemeCookingWithdrawEvent::ID)
-                } else {
-                    MemeCookingWithdrawEvent::ID.to_string()
-                },
+                MemeCookingWithdrawEvent::ID.to_string(),
             ),
             liquidity_pool_stream: RedisEventStream::new(
                 connection.clone(),
-                if is_testnet {
-                    format!("{}_testnet", LiquidityPoolEvent::ID)
-                } else {
-                    LiquidityPoolEvent::ID.to_string()
-                },
+                LiquidityPoolEvent::ID.to_string(),
             ),
             max_stream_size,
         }
