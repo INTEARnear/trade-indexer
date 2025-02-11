@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use inindexer::near_indexer_primitives::types::BlockHeight;
-use intear_events::events::trade::trade_pool_change::AidolsPool;
+use intear_events::events::trade::trade_pool_change::{AidolsPool, GraFunPool};
 use std::collections::HashMap;
 
 use inindexer::{
@@ -1484,6 +1484,222 @@ async fn detects_aidols_state_changes() {
                 wnear_hold: 500000000000000000000000000,
                 is_deployed: false,
                 is_tradable: true
+            })
+        })
+    );
+}
+
+#[tokio::test]
+async fn detects_grafun_buy() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(139464959..=139464969),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            RawPoolSwap {
+                pool: "GRAFUN-worm.gra-fun.near".to_owned(),
+                token_in: "wrap.near".parse().unwrap(),
+                token_out: "worm.gra-fun.near".parse().unwrap(),
+                amount_in: 1000000000000000000000000,
+                amount_out: 1189351822990900207532202097059
+            },
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 139464963,
+                block_timestamp_nanosec: 1739256255986699436,
+                transaction_id: "CWm8Y6XgGdR2GHDJkzFkZHuG1uwicXEfbKpH41LWrB8E"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "3cN6x6opaVxnUBSGg8tR3oT2RFHTus3Y56p2oMKhLZ9D"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("wrap.near".parse().unwrap(), -1000000000000000000000000),
+                    (
+                        "worm.gra-fun.near".parse().unwrap(),
+                        1189351822990900207532202097059,
+                    )
+                ]),
+                pool_swaps: vec![RawPoolSwap {
+                    pool: "GRAFUN-worm.gra-fun.near".to_owned(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "worm.gra-fun.near".parse().unwrap(),
+                    amount_in: 1000000000000000000000000,
+                    amount_out: 1189351822990900207532202097059
+                }]
+            },
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 139464963,
+                block_timestamp_nanosec: 1739256255986699436,
+                transaction_id: "CWm8Y6XgGdR2GHDJkzFkZHuG1uwicXEfbKpH41LWrB8E"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "3cN6x6opaVxnUBSGg8tR3oT2RFHTus3Y56p2oMKhLZ9D"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_grafun_sell() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(139464980..=139464990),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            RawPoolSwap {
+                pool: "GRAFUN-worm.gra-fun.near".to_owned(),
+                token_in: "worm.gra-fun.near".parse().unwrap(),
+                token_out: "wrap.near".parse().unwrap(),
+                amount_in: 1189351822990900207532202097059,
+                amount_out: 800000000000000000000001
+            },
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 139464984,
+                block_timestamp_nanosec: 1739256278503057950,
+                transaction_id: "9uJedNUnfKu9aGCWaugL6fHWujRchH1GpumUo4Cfdm9W"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "9rWnsbXPjChfgJVJi5rS8HqCTG4jCX9bRhyxqytGc69d"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("wrap.near".parse().unwrap(), 800000000000000000000001),
+                    (
+                        "worm.gra-fun.near".parse().unwrap(),
+                        -1189351822990900207532202097059
+                    ),
+                ]),
+                pool_swaps: vec![RawPoolSwap {
+                    pool: "GRAFUN-worm.gra-fun.near".to_owned(),
+                    token_in: "worm.gra-fun.near".parse().unwrap(),
+                    token_out: "wrap.near".parse().unwrap(),
+                    amount_in: 1189351822990900207532202097059,
+                    amount_out: 800000000000000000000001
+                }],
+            },
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 139464984,
+                block_timestamp_nanosec: 1739256278503057950,
+                transaction_id: "9uJedNUnfKu9aGCWaugL6fHWujRchH1GpumUo4Cfdm9W"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "9rWnsbXPjChfgJVJi5rS8HqCTG4jCX9bRhyxqytGc69d"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_grafun_state_changes() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(139464980..=139464990),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        dbg!(indexer.handler.state_changes).contains(&PoolChangeEvent {
+            pool_id: "GRAFUN-worm.gra-fun.near".to_owned(),
+            receipt_id: "bhTe9zS9NEXCwbTR5FxoBhJ4LcTfyYspvP4CXwjYqcH"
+                .parse()
+                .unwrap(),
+            block_timestamp_nanosec: 1739256276466427878,
+            block_height: 139464982,
+            pool: PoolType::GraFun(GraFunPool {
+                token_id: "worm.gra-fun.near".parse().unwrap(),
+                token_hold: 129502138588218179175033777020538454075,
+                wnear_hold: 152121118698782097730633206323531756907,
+                is_deployed: false,
+                is_tradable: false
             })
         })
     );

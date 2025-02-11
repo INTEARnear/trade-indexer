@@ -13,25 +13,31 @@ use serde::Deserialize;
 
 use crate::{BalanceChangeSwap, PoolId, RawPoolSwap, TradeContext, TradeEventHandler};
 
-pub const AIDOLS_CONTRACT_ID: &str = "aidols.near";
+pub const GRAFUN_CONTRACT_ID: &str = "gra-fun.near";
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 struct SwapEvent {
     #[serde(with = "dec_format")]
+    end_price: u128,
+    #[serde(with = "dec_format")]
     input_amount: Balance,
     input_token: AccountId,
     #[serde(with = "dec_format")]
+    near_reserve: Balance,
+    #[serde(with = "dec_format")]
+    near_usdt_price: Balance,
+    #[serde(with = "dec_format")]
     output_amount: Balance,
     output_token: AccountId,
-    referral_id: Option<AccountId>,
+    refferal_id: Option<AccountId>,
     #[serde(with = "dec_format")]
-    token_hold: Balance,
+    start_price: u128,
+    #[serde(with = "dec_format")]
+    token_reserve: Balance,
     user_id: AccountId,
     #[serde(with = "dec_format")]
     wnear_commission: Balance,
-    #[serde(with = "dec_format")]
-    wnear_hold: Balance,
 }
 
 pub async fn detect(
@@ -44,7 +50,7 @@ pub async fn detect(
     if is_testnet {
         return;
     }
-    if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == AIDOLS_CONTRACT_ID {
+    if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == GRAFUN_CONTRACT_ID {
         for log in &receipt.receipt.execution_outcome.outcome.logs {
             if let Ok(event) = EventLogData::<Vec<SwapEvent>>::deserialize(log) {
                 if event.event == "token_swap" {
@@ -65,7 +71,7 @@ pub async fn detect(
                             .on_raw_pool_swap(
                                 context.clone(),
                                 RawPoolSwap {
-                                    pool: create_aidols_pool_id(&token),
+                                    pool: create_grafun_pool_id(&token),
                                     token_in: swap.input_token.clone(),
                                     token_out: swap.output_token.clone(),
                                     amount_in: swap.input_amount,
@@ -82,7 +88,7 @@ pub async fn detect(
                                         (swap.output_token.clone(), swap.output_amount as i128),
                                     ]),
                                     pool_swaps: vec![RawPoolSwap {
-                                        pool: create_aidols_pool_id(&token),
+                                        pool: create_grafun_pool_id(&token),
                                         token_in: swap.input_token.clone(),
                                         token_out: swap.output_token.clone(),
                                         amount_in: swap.input_amount,
@@ -98,6 +104,6 @@ pub async fn detect(
     }
 }
 
-pub fn create_aidols_pool_id(token_id: &AccountId) -> PoolId {
-    format!("AIDOLS-{token_id}")
+pub fn create_grafun_pool_id(token_id: &AccountId) -> PoolId {
+    format!("GRAFUN-{token_id}")
 }
