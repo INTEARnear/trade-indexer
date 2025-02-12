@@ -1696,10 +1696,10 @@ async fn detects_grafun_state_changes() {
             block_height: 139464982,
             pool: PoolType::GraFun(GraFunPool {
                 token_id: "worm.gra-fun.near".parse().unwrap(),
-                token_hold: 129502138588218179175033777020538454075,
-                wnear_hold: 152121118698782097730633206323531756907,
+                token_hold: 996148226856156196041971045291539,
+                wnear_hold: 752899999999999999999999999,
                 is_deployed: false,
-                is_tradable: false
+                is_tradable: true,
             })
         })
     );

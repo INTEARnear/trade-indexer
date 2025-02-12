@@ -214,8 +214,8 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                     token_id: token_id.clone(),
                                     token_hold: pool.token_hold,
                                     wnear_hold: pool.wnear_hold,
-                                    is_deployed: false,//pool.is_deployed,
-                                    is_tradable: false,//pool.is_tradable,
+                                    is_deployed: pool.is_deployed,
+                                    is_tradable: pool.is_tradable,
                                 }),
                             };
                             self.handler.on_pool_change(pool).await;
