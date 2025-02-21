@@ -179,7 +179,9 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                             .header
                                             .timestamp_nanosec
                                             as u128,
-                                        transaction_id: "11111111111111111111111111111111".parse().unwrap(), // Getting transaction id in state changes is not supported in inindexer yet
+                                        transaction_id: "11111111111111111111111111111111"
+                                            .parse()
+                                            .unwrap(), // Getting transaction id in state changes is not supported in inindexer yet
                                         receipt_id: *receipt_id,
                                     },
                                     create_aidols_pool_id(&token_id),
@@ -250,7 +252,9 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                             .header
                                             .timestamp_nanosec
                                             as u128,
-                                        transaction_id: "11111111111111111111111111111111".parse().unwrap(), // Getting transaction id in state changes is not supported in inindexer yet
+                                        transaction_id: "11111111111111111111111111111111"
+                                            .parse()
+                                            .unwrap(), // Getting transaction id in state changes is not supported in inindexer yet
                                         receipt_id: *receipt_id,
                                     },
                                     create_grafun_pool_id(&token_id),
