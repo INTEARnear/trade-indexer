@@ -8,7 +8,6 @@ use inindexer::{
     BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
 };
 
-use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
 use crate::{
     ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap,
     TradeContext, TradeEventHandler, TradeIndexer,
@@ -19,8 +18,6 @@ struct TestHandler {
     pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
     balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
     state_changes: Vec<PoolChangeEvent>,
-    memecooking_deposits: Vec<(DepositEvent, TradeContext)>,
-    memecooking_withdraws: Vec<(WithdrawEvent, TradeContext)>,
     liquidity_pool_events: Vec<(TradeContext, PoolId, HashMap<AccountId, i128>)>,
 }
 
@@ -46,14 +43,6 @@ impl TradeEventHandler for TestHandler {
 
     async fn on_pool_change(&mut self, pool: PoolChangeEvent) {
         self.state_changes.push(pool);
-    }
-
-    async fn on_memecooking_deposit(&mut self, context: TradeContext, deposit: DepositEvent) {
-        self.memecooking_deposits.push((deposit, context));
-    }
-
-    async fn on_memecooking_withdraw(&mut self, context: TradeContext, withdraw: WithdrawEvent) {
-        self.memecooking_withdraws.push((withdraw, context));
     }
 
     async fn on_liquidity_pool(
@@ -987,104 +976,6 @@ async fn detects_ref_hot_tg_trades() {
                 receipt_id: "4wVWyZd2k1vbSQCw4HzvvKVqrgsUYRiEoiRDQUtYX5Yu"
                     .parse()
                     .unwrap()
-            }
-        )]
-    );
-}
-
-#[tokio::test]
-async fn detects_memecooking_deposits() {
-    let mut indexer = TradeIndexer {
-        handler: TestHandler::default(),
-        is_testnet: true,
-    };
-
-    run_indexer(
-        &mut indexer,
-        NeardataProvider::testnet(),
-        IndexerOptions {
-            range: BlockIterator::iterator(174_733_296..=174_733_302),
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..Default::default()
-        },
-    )
-    .await
-    .unwrap();
-
-    assert_eq!(
-        *indexer.handler.memecooking_deposits,
-        vec![(
-            DepositEvent {
-                meme_id: 52,
-                account_id: "slime.testnet".parse().unwrap(),
-                amount: 2985000000000000000000000,
-                protocol_fee: 7500000000000000000000,
-                referrer: Some(
-                    "0xd51c5283b8727206bf9be2b2db4e5673efaf519c"
-                        .parse()
-                        .unwrap()
-                ),
-                referrer_fee: Some(7500000000000000000000)
-            },
-            TradeContext {
-                trader: "slime.testnet".parse().unwrap(),
-                block_height: 174733299,
-                block_timestamp_nanosec: 1726822053211742048,
-                transaction_id: "3JKqU16HucfRagV5gNEtjfkZFwV5xZMwiTa2pYVt7oxa"
-                    .parse()
-                    .unwrap(),
-                receipt_id: "2acCdtPJUkp37aW6jT66hedowjczzycVB5YKHfA2gnjg"
-                    .parse()
-                    .unwrap(),
-            }
-        )]
-    );
-}
-
-#[tokio::test]
-async fn detects_memecooking_withdraws() {
-    let mut indexer = TradeIndexer {
-        handler: TestHandler::default(),
-        is_testnet: true,
-    };
-
-    run_indexer(
-        &mut indexer,
-        NeardataProvider::testnet(),
-        IndexerOptions {
-            range: BlockIterator::iterator(174_938_562..=174_938_567),
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..Default::default()
-        },
-    )
-    .await
-    .unwrap();
-
-    assert_eq!(
-        *indexer.handler.memecooking_withdraws,
-        vec![(
-            WithdrawEvent {
-                meme_id: 53,
-                account_id: "slime.testnet".parse().unwrap(),
-                amount: 975100000000000000000000,
-                fee: 19900000000000000000000,
-            },
-            TradeContext {
-                trader: "slime.testnet".parse().unwrap(),
-                block_height: 174938564,
-                block_timestamp_nanosec: 1727027550926094610,
-                transaction_id: "FGf3e9QDEBLYGCA11K3z4QaeoZtBxDNrUys1iErgBMaQ"
-                    .parse()
-                    .unwrap(),
-                receipt_id: "G6k8gYVVNAyf9XZC6H8Xby6mLx7SztAq8tgBLAUMK7e2"
-                    .parse()
-                    .unwrap(),
             }
         )]
     );

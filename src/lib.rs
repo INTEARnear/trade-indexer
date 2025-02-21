@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use aidols_trade_detection::AIDOLS_CONTRACT_ID;
+use aidols_trade_detection::{create_aidols_pool_id, AIDOLS_CONTRACT_ID};
 use async_trait::async_trait;
 use borsh::BorshDeserialize;
-use grafun_trade_detection::GRAFUN_CONTRACT_ID;
+use grafun_trade_detection::{create_grafun_pool_id, GRAFUN_CONTRACT_ID};
 use inindexer::{
     near_indexer_primitives::{
         types::{AccountId, Balance, BlockHeight},
@@ -17,13 +17,10 @@ use intear_events::events::trade::trade_pool_change::GraFunPool;
 use ref_trade_detection::REF_CONTRACT_ID;
 use ref_trade_detection::TESTNET_REF_CONTRACT_ID;
 
-use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
-
 mod aidols_state;
 mod aidols_trade_detection;
 mod grafun_state;
 mod grafun_trade_detection;
-mod meme_cooking_deposit_detection;
 pub mod redis_handler;
 mod ref_finance_state;
 mod ref_trade_detection;
@@ -46,8 +43,6 @@ pub trait TradeEventHandler: Send + Sync + 'static {
         balance_changes: BalanceChangeSwap,
     );
     async fn on_pool_change(&mut self, pool: PoolChangeEvent);
-    async fn on_memecooking_deposit(&mut self, context: TradeContext, deposit: DepositEvent);
-    async fn on_memecooking_withdraw(&mut self, context: TradeContext, withdraw: WithdrawEvent);
     async fn on_liquidity_pool(
         &mut self,
         context: TradeContext,
@@ -156,21 +151,44 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                 &mut value.as_slice(),
                             )
                         {
-                            let pool = PoolChangeEvent {
-                                pool_id: aidols_trade_detection::create_aidols_pool_id(&token_id),
-                                receipt_id: *receipt_id,
-                                block_timestamp_nanosec: block.block.header.timestamp_nanosec
-                                    as u128,
-                                block_height: block.block.header.height,
-                                pool: PoolType::Aidols(AidolsPool {
-                                    token_id: token_id.clone(),
-                                    token_hold: pool.token_hold,
-                                    wnear_hold: pool.wnear_hold,
-                                    is_deployed: pool.is_deployed,
-                                    is_tradable: pool.is_tradable,
-                                }),
-                            };
-                            self.handler.on_pool_change(pool).await;
+                            self.handler
+                                .on_pool_change(PoolChangeEvent {
+                                    pool_id: aidols_trade_detection::create_aidols_pool_id(
+                                        &token_id,
+                                    ),
+                                    receipt_id: *receipt_id,
+                                    block_timestamp_nanosec: block.block.header.timestamp_nanosec
+                                        as u128,
+                                    block_height: block.block.header.height,
+                                    pool: PoolType::Aidols(AidolsPool {
+                                        token_id: token_id.clone(),
+                                        token_hold: pool.token_hold,
+                                        wnear_hold: pool.wnear_hold,
+                                        is_deployed: pool.is_deployed,
+                                        is_tradable: pool.is_tradable,
+                                    }),
+                                })
+                                .await;
+                            self.handler
+                                .on_liquidity_pool(
+                                    TradeContext {
+                                        trader: "aidols.near".parse().unwrap(),
+                                        block_height: block.block.header.height,
+                                        block_timestamp_nanosec: block
+                                            .block
+                                            .header
+                                            .timestamp_nanosec
+                                            as u128,
+                                        transaction_id: "1111111111111111111111111111111111111111111111111111111111111111".parse().unwrap(), // Getting transaction id in state changes is not supported in inindexer yet
+                                        receipt_id: *receipt_id,
+                                    },
+                                    create_aidols_pool_id(&token_id),
+                                    HashMap::from_iter([
+                                        ("wrap.near".parse().unwrap(), pool.wnear_hold as i128),
+                                        (token_id.clone(), pool.token_hold as i128),
+                                    ]),
+                                )
+                                .await;
                         }
                     } else if account_id == grafun_contract_id {
                         let receipt_id =
@@ -204,21 +222,44 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                 &mut value.as_slice(),
                             )
                         {
-                            let pool = PoolChangeEvent {
-                                pool_id: grafun_trade_detection::create_grafun_pool_id(&token_id),
-                                receipt_id: *receipt_id,
-                                block_timestamp_nanosec: block.block.header.timestamp_nanosec
-                                    as u128,
-                                block_height: block.block.header.height,
-                                pool: PoolType::GraFun(GraFunPool {
-                                    token_id: token_id.clone(),
-                                    token_hold: pool.token_hold,
-                                    wnear_hold: pool.wnear_hold,
-                                    is_deployed: pool.is_deployed,
-                                    is_tradable: pool.is_tradable,
-                                }),
-                            };
-                            self.handler.on_pool_change(pool).await;
+                            self.handler
+                                .on_pool_change(PoolChangeEvent {
+                                    pool_id: grafun_trade_detection::create_grafun_pool_id(
+                                        &token_id,
+                                    ),
+                                    receipt_id: *receipt_id,
+                                    block_timestamp_nanosec: block.block.header.timestamp_nanosec
+                                        as u128,
+                                    block_height: block.block.header.height,
+                                    pool: PoolType::GraFun(GraFunPool {
+                                        token_id: token_id.clone(),
+                                        token_hold: pool.token_hold,
+                                        wnear_hold: pool.wnear_hold,
+                                        is_deployed: pool.is_deployed,
+                                        is_tradable: pool.is_tradable,
+                                    }),
+                                })
+                                .await;
+                            self.handler
+                                .on_liquidity_pool(
+                                    TradeContext {
+                                        trader: "gra-fun.near".parse().unwrap(),
+                                        block_height: block.block.header.height,
+                                        block_timestamp_nanosec: block
+                                            .block
+                                            .header
+                                            .timestamp_nanosec
+                                            as u128,
+                                        transaction_id: "1111111111111111111111111111111111111111111111111111111111111111".parse().unwrap(), // Getting transaction id in state changes is not supported in inindexer yet
+                                        receipt_id: *receipt_id,
+                                    },
+                                    create_grafun_pool_id(&token_id),
+                                    HashMap::from_iter([
+                                        ("wrap.near".parse().unwrap(), pool.wnear_hold as i128),
+                                        (token_id.clone(), pool.token_hold as i128),
+                                    ]),
+                                )
+                                .await;
                         }
                     }
                 }
@@ -234,14 +275,6 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
         block: &StreamerMessage,
     ) -> Result<(), Self::Error> {
         ref_trade_detection::detect(
-            receipt,
-            transaction,
-            block,
-            &mut self.handler,
-            self.is_testnet,
-        )
-        .await;
-        meme_cooking_deposit_detection::detect(
             receipt,
             transaction,
             block,

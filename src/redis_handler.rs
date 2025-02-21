@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::meme_cooking_deposit_detection::{DepositEvent, WithdrawEvent};
 use crate::ref_finance_state;
 use crate::{
     BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap, TradeContext,
@@ -179,36 +178,6 @@ impl TradeEventHandler for PushToRedisStream {
             block_timestamp_nanosec: event.block_timestamp_nanosec,
             receipt_id: event.receipt_id,
         });
-    }
-
-    async fn on_memecooking_deposit(&mut self, context: TradeContext, deposit: DepositEvent) {
-        self.meme_cooking_deposit_stream
-            .add_event(MemeCookingDepositEvent {
-                meme_id: deposit.meme_id,
-                amount: deposit.amount,
-                protocol_fee: deposit.protocol_fee,
-                referrer: deposit.referrer,
-                referrer_fee: deposit.referrer_fee,
-                trader: context.trader,
-                block_height: context.block_height,
-                block_timestamp_nanosec: context.block_timestamp_nanosec,
-                transaction_id: context.transaction_id,
-                receipt_id: context.receipt_id,
-            });
-    }
-
-    async fn on_memecooking_withdraw(&mut self, context: TradeContext, withdraw: WithdrawEvent) {
-        self.meme_cooking_withdraw_stream
-            .add_event(MemeCookingWithdrawEvent {
-                meme_id: withdraw.meme_id,
-                amount: withdraw.amount,
-                fee: withdraw.fee,
-                trader: context.trader,
-                block_height: context.block_height,
-                block_timestamp_nanosec: context.block_timestamp_nanosec,
-                transaction_id: context.transaction_id,
-                receipt_id: context.receipt_id,
-            });
     }
 
     async fn on_liquidity_pool(
