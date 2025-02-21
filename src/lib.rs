@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use aidols_trade_detection::{create_aidols_pool_id, AIDOLS_CONTRACT_ID};
+use aidols_trade_detection::AIDOLS_CONTRACT_ID;
 use async_trait::async_trait;
 use borsh::BorshDeserialize;
-use grafun_trade_detection::{create_grafun_pool_id, GRAFUN_CONTRACT_ID};
+use grafun_trade_detection::GRAFUN_CONTRACT_ID;
 use inindexer::{
     near_indexer_primitives::{
         types::{AccountId, Balance, BlockHeight},
@@ -169,28 +169,6 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                     }),
                                 })
                                 .await;
-                            self.handler
-                                .on_liquidity_pool(
-                                    TradeContext {
-                                        trader: "aidols.near".parse().unwrap(),
-                                        block_height: block.block.header.height,
-                                        block_timestamp_nanosec: block
-                                            .block
-                                            .header
-                                            .timestamp_nanosec
-                                            as u128,
-                                        transaction_id: "11111111111111111111111111111111"
-                                            .parse()
-                                            .unwrap(), // Getting transaction id in state changes is not supported in inindexer yet
-                                        receipt_id: *receipt_id,
-                                    },
-                                    create_aidols_pool_id(&token_id),
-                                    HashMap::from_iter([
-                                        ("wrap.near".parse().unwrap(), pool.wnear_hold as i128),
-                                        (token_id.clone(), pool.token_hold as i128),
-                                    ]),
-                                )
-                                .await;
                         }
                     } else if account_id == grafun_contract_id {
                         let receipt_id =
@@ -241,28 +219,6 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                         is_tradable: pool.is_tradable,
                                     }),
                                 })
-                                .await;
-                            self.handler
-                                .on_liquidity_pool(
-                                    TradeContext {
-                                        trader: "gra-fun.near".parse().unwrap(),
-                                        block_height: block.block.header.height,
-                                        block_timestamp_nanosec: block
-                                            .block
-                                            .header
-                                            .timestamp_nanosec
-                                            as u128,
-                                        transaction_id: "11111111111111111111111111111111"
-                                            .parse()
-                                            .unwrap(), // Getting transaction id in state changes is not supported in inindexer yet
-                                        receipt_id: *receipt_id,
-                                    },
-                                    create_grafun_pool_id(&token_id),
-                                    HashMap::from_iter([
-                                        ("wrap.near".parse().unwrap(), pool.wnear_hold as i128),
-                                        (token_id.clone(), pool.token_hold as i128),
-                                    ]),
-                                )
                                 .await;
                         }
                     }
