@@ -1165,6 +1165,105 @@ async fn detects_ref_swap_by_output() {
 }
 
 #[tokio::test]
+async fn detects_ref_swap_by_output_transfer() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        NeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(142_760_523..=142_760_532),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(
+                &"d0ebc7d872d5e3ee9281e9492aa5aca606cbc829c7dfc915a168ac75ccc23e7e"
+                    .parse::<AccountId>()
+                    .unwrap()
+            )
+            .unwrap(),
+        vec![(
+            RawPoolSwap {
+                pool: "REF-6031".to_owned(),
+                token_in: "end.aidols.near".parse().unwrap(),
+                token_out: "wrap.near".parse().unwrap(),
+                amount_in: 3696035670585457669556649429,
+                amount_out: 78838174273858921161827
+            },
+            TradeContext {
+                trader: "d0ebc7d872d5e3ee9281e9492aa5aca606cbc829c7dfc915a168ac75ccc23e7e"
+                    .parse()
+                    .unwrap(),
+                block_height: 142760528,
+                block_timestamp_nanosec: 1743008136820312282,
+                transaction_id: "FeEQwTYHWY5iHBUELM7DDBrmoNNaZzWztvmYjXB5cCDD"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "8hPEQfwhxU1zt1grxiLHysTb5fwk6VJMEC17cnA5oLRZ"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(
+                &"d0ebc7d872d5e3ee9281e9492aa5aca606cbc829c7dfc915a168ac75ccc23e7e"
+                    .parse::<AccountId>()
+                    .unwrap()
+            )
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("wrap.near".parse().unwrap(), 78838174273858921161827),
+                    (
+                        "end.aidols.near".parse().unwrap(),
+                        -3696035670585457669556649429,
+                    )
+                ]),
+                pool_swaps: vec![RawPoolSwap {
+                    pool: "REF-6031".to_owned(),
+                    token_in: "end.aidols.near".parse().unwrap(),
+                    token_out: "wrap.near".parse().unwrap(),
+                    amount_in: 3696035670585457669556649429,
+                    amount_out: 78838174273858921161827
+                },]
+            },
+            TradeContext {
+                trader: "d0ebc7d872d5e3ee9281e9492aa5aca606cbc829c7dfc915a168ac75ccc23e7e"
+                    .parse()
+                    .unwrap(),
+                block_height: 142760528,
+                block_timestamp_nanosec: 1743008136820312282,
+                transaction_id: "FeEQwTYHWY5iHBUELM7DDBrmoNNaZzWztvmYjXB5cCDD"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "8hPEQfwhxU1zt1grxiLHysTb5fwk6VJMEC17cnA5oLRZ"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+}
+
+#[tokio::test]
 async fn detects_aidols_buy() {
     let mut indexer = TradeIndexer {
         handler: TestHandler::default(),

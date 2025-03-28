@@ -76,7 +76,7 @@ pub async fn detect(
                             swap_action_pools.extend(call.actions.into_iter().map(|a| a.pool_id));
                         }
                     } else if method_name == "swap_by_output" {
-                        if let Ok(call) = serde_json::from_slice::<MethodSwapByOutput>(args) {
+                        if let Ok(call) = serde_json::from_slice::<MethodSwap>(args) {
                             swap_action_pools.extend(call.actions.into_iter().map(|a| a.pool_id));
                         }
                     } else if method_name == "execute_actions" {
@@ -319,11 +319,6 @@ struct MethodSwap {
 }
 
 #[derive(Deserialize, Debug)]
-struct MethodSwapByOutput {
-    actions: Vec<SwapByOutputAction>,
-}
-
-#[derive(Deserialize, Debug)]
 struct MethodExecuteActions {
     actions: Vec<Action>,
 }
@@ -368,19 +363,11 @@ struct RemoveLiquidity {
 struct Action {
     pool_id: u64,
     token_in: AccountId,
+    token_out: AccountId,
     #[serde(with = "dec_format", default)]
     amount_in: Option<Balance>,
-    token_out: AccountId,
-    #[serde(with = "dec_format")]
-    min_amount_out: Balance,
-}
-
-#[derive(Deserialize, Debug)]
-#[allow(dead_code)]
-struct SwapByOutputAction {
-    pool_id: u64,
-    token_in: AccountId,
-    token_out: AccountId,
+    #[serde(with = "dec_format", default)]
+    min_amount_out: Option<Balance>,
     #[serde(with = "dec_format", default)]
     amount_out: Option<Balance>,
     #[serde(with = "dec_format", default)]
