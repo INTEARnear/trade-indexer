@@ -173,6 +173,9 @@ impl TradeEventHandler for PushToRedisStream {
                 PoolType::GraFun(pool) => {
                     intear_events::events::trade::trade_pool_change::PoolType::GraFun(pool)
                 }
+                PoolType::Veax(pool) => {
+                    intear_events::events::trade::trade_pool_change::PoolType::Veax(pool)
+                }
             },
             block_height: event.block_height,
             block_timestamp_nanosec: event.block_timestamp_nanosec,

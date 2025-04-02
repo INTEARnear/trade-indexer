@@ -1,11 +1,11 @@
 use async_trait::async_trait;
-use inindexer::near_indexer_primitives::types::BlockHeight;
-use intear_events::events::trade::trade_pool_change::{AidolsPool, GraFunPool};
+use inindexer::{near_indexer_primitives::types::BlockHeight, neardata_old::OldNeardataProvider};
+use intear_events::events::trade::trade_pool_change::{AidolsPool, GraFunPool, VeaxPool};
 use std::collections::HashMap;
 
 use inindexer::{
-    near_indexer_primitives::types::AccountId, neardata::NeardataProvider, run_indexer,
-    BlockIterator, IndexerOptions, PreprocessTransactionsSettings,
+    near_indexer_primitives::types::AccountId, run_indexer, BlockIterator, IndexerOptions,
+    PreprocessTransactionsSettings,
 };
 
 use crate::{
@@ -68,7 +68,7 @@ async fn detects_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_210_089..=118_210_094),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -155,7 +155,7 @@ async fn detects_ref_multistep_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_214_454..=118_214_461),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -300,7 +300,7 @@ async fn detects_ref_dragonbot_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_209_234..=118_209_239),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -399,7 +399,7 @@ async fn detects_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_212_504..=118_212_506),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -595,7 +595,7 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_214_071..=118_214_073),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -633,7 +633,7 @@ async fn doesnt_detect_failed_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(112_087_639..=112_087_643),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -671,7 +671,7 @@ async fn detects_delegate_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(115_224_414..=115_224_420),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -816,7 +816,7 @@ async fn detects_ref_state_changes() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(118_210_089..=118_210_094),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -875,7 +875,7 @@ async fn detects_ref_hot_tg_trades() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(124_427_306..=124_427_323),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -990,7 +990,7 @@ async fn detects_ref_liquidity_add() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(129_352_974..=129_352_978),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1038,7 +1038,7 @@ async fn detects_ref_liquidity_remove() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(129_364_250..=129_364_254),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1086,7 +1086,7 @@ async fn detects_ref_swap_by_output() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(131_092_276..=131_092_280),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1173,7 +1173,7 @@ async fn detects_ref_swap_by_output_transfer() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(142_760_523..=142_760_532),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1272,7 +1272,7 @@ async fn detects_aidols_buy() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(137406119..=137406124),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1359,7 +1359,7 @@ async fn detects_aidols_sell() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(137409038..=137409042),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1447,7 +1447,7 @@ async fn detects_aidols_state_changes() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(137406979..=137406984),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1460,23 +1460,21 @@ async fn detects_aidols_state_changes() {
     .await
     .unwrap();
 
-    assert!(
-        dbg!(indexer.handler.state_changes).contains(&PoolChangeEvent {
-            pool_id: "AIDOLS-tganza.aidols.near".to_owned(),
-            receipt_id: "ErBeAEQyuWyab7ggYrzEZnPBo1sJA4GnJ6PhiCrMnn9y"
-                .parse()
-                .unwrap(),
-            block_timestamp_nanosec: 1736935882233587330,
-            block_height: 137406981,
-            pool: PoolType::Aidols(AidolsPool {
-                token_id: "tganza.aidols.near".parse().unwrap(),
-                token_hold: 1000000000000000000000000000000000,
-                wnear_hold: 500000000000000000000000000,
-                is_deployed: false,
-                is_tradable: true
-            })
+    assert!(indexer.handler.state_changes.contains(&PoolChangeEvent {
+        pool_id: "AIDOLS-tganza.aidols.near".to_owned(),
+        receipt_id: "ErBeAEQyuWyab7ggYrzEZnPBo1sJA4GnJ6PhiCrMnn9y"
+            .parse()
+            .unwrap(),
+        block_timestamp_nanosec: 1736935882233587330,
+        block_height: 137406981,
+        pool: PoolType::Aidols(AidolsPool {
+            token_id: "tganza.aidols.near".parse().unwrap(),
+            token_hold: 1000000000000000000000000000000000,
+            wnear_hold: 500000000000000000000000000,
+            is_deployed: false,
+            is_tradable: true
         })
-    );
+    }));
 }
 
 #[tokio::test]
@@ -1488,7 +1486,7 @@ async fn detects_grafun_buy() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(139464959..=139464969),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1575,7 +1573,7 @@ async fn detects_grafun_sell() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(139464980..=139464990),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1663,7 +1661,7 @@ async fn detects_grafun_state_changes() {
 
     run_indexer(
         &mut indexer,
-        NeardataProvider::mainnet(),
+        OldNeardataProvider::mainnet(),
         IndexerOptions {
             range: BlockIterator::iterator(139464980..=139464990),
             preprocess_transactions: Some(PreprocessTransactionsSettings {
@@ -1676,21 +1674,264 @@ async fn detects_grafun_state_changes() {
     .await
     .unwrap();
 
-    assert!(
-        dbg!(indexer.handler.state_changes).contains(&PoolChangeEvent {
-            pool_id: "GRAFUN-worm.gra-fun.near".to_owned(),
-            receipt_id: "bhTe9zS9NEXCwbTR5FxoBhJ4LcTfyYspvP4CXwjYqcH"
-                .parse()
-                .unwrap(),
-            block_timestamp_nanosec: 1739256276466427878,
-            block_height: 139464982,
-            pool: PoolType::GraFun(GraFunPool {
-                token_id: "worm.gra-fun.near".parse().unwrap(),
-                token_hold: 996148226856156196041971045291539,
-                wnear_hold: 752899999999999999999999999,
-                is_deployed: false,
-                is_tradable: true,
-            })
+    assert!(indexer.handler.state_changes.contains(&PoolChangeEvent {
+        pool_id: "GRAFUN-worm.gra-fun.near".to_owned(),
+        receipt_id: "bhTe9zS9NEXCwbTR5FxoBhJ4LcTfyYspvP4CXwjYqcH"
+            .parse()
+            .unwrap(),
+        block_timestamp_nanosec: 1739256276466427878,
+        block_height: 139464982,
+        pool: PoolType::GraFun(GraFunPool {
+            token_id: "worm.gra-fun.near".parse().unwrap(),
+            token_hold: 996148226856156196041971045291539,
+            wnear_hold: 752899999999999999999999999,
+            is_deployed: false,
+            is_tradable: true,
         })
+    }));
+}
+
+#[tokio::test]
+async fn detects_refdcl_trades() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        OldNeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(143_270_323..=143_270_329),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"5adcddad84c166d8792684c3ad652803df01fac582526dd5c21903b0b5aafe2d".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            RawPoolSwap {
+                pool: "REFDCL-17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1|wrap.near|100".to_owned(),
+                token_in: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1".parse().unwrap(),
+                token_out: "wrap.near".parse().unwrap(),
+                amount_in: 50287157,
+                amount_out: 19802185927199304105095477
+            },
+            TradeContext {
+                trader: "5adcddad84c166d8792684c3ad652803df01fac582526dd5c21903b0b5aafe2d".parse().unwrap(),
+                block_height: 143270326,
+                block_timestamp_nanosec: 1743580488884603339,
+                transaction_id: "5SiQzAwvpfu3dBAao3TuaXhwLTFANDQ3GXNryR1aqdFk".parse().unwrap(),
+                receipt_id: "8eznv1M9d33sPDHdUnzTCzduTxujuqG4kmUjU5tWJ3pk".parse().unwrap(),
+            }
+        )]
     );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"5adcddad84c166d8792684c3ad652803df01fac582526dd5c21903b0b5aafe2d".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("wrap.near".parse().unwrap(), 19802185927199304105095477),
+                    (
+                        "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1".parse().unwrap(),
+                        -50287157
+                    )
+                ]),
+                pool_swaps: vec![RawPoolSwap {
+                    pool: "REFDCL-17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1|wrap.near|100".to_owned(),
+                    token_in: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1".parse().unwrap(),
+                    token_out: "wrap.near".parse().unwrap(),
+                    amount_in: 50287157,
+                    amount_out: 19802185927199304105095477
+                }]
+            },
+            TradeContext {
+                trader: "5adcddad84c166d8792684c3ad652803df01fac582526dd5c21903b0b5aafe2d".parse().unwrap(),
+                block_height: 143270326,
+                block_timestamp_nanosec: 1743580488884603339,
+                transaction_id: "5SiQzAwvpfu3dBAao3TuaXhwLTFANDQ3GXNryR1aqdFk".parse().unwrap(),
+                receipt_id: "8eznv1M9d33sPDHdUnzTCzduTxujuqG4kmUjU5tWJ3pk".parse().unwrap(),
+            }
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_veax_trades() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        OldNeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(143_268_885..=143_268_892),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"foxboss.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            RawPoolSwap {
+                pool: "VEAX-wrap.near-ftv2.nekotoken.near".to_owned(),
+                token_in: "wrap.near".parse().unwrap(),
+                token_out: "ftv2.nekotoken.near".parse().unwrap(),
+                amount_in: 2500000000000000000000000,
+                amount_out: 147942684070596964058344474532
+            },
+            TradeContext {
+                trader: "foxboss.near".parse().unwrap(),
+                block_height: 143268887,
+                block_timestamp_nanosec: 1743578885583673600,
+                transaction_id: "aUQkpyT7WCtGGt9zQgXRzKCw3Yy2TN8qSRf27ZMpPXq"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "8UK2hwxW3emCG98x2VHqJXBCLRNKnyrybHrdAqQyJgiE"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"foxboss.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("wrap.near".parse().unwrap(), -2500000000000000000000000),
+                    (
+                        "ftv2.nekotoken.near".parse().unwrap(),
+                        147942684070596964058344474532
+                    )
+                ]),
+                pool_swaps: vec![RawPoolSwap {
+                    pool: "VEAX-wrap.near-ftv2.nekotoken.near".to_owned(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "ftv2.nekotoken.near".parse().unwrap(),
+                    amount_in: 2500000000000000000000000,
+                    amount_out: 147942684070596964058344474532
+                }]
+            },
+            TradeContext {
+                trader: "foxboss.near".parse().unwrap(),
+                block_height: 143268887,
+                block_timestamp_nanosec: 1743578885583673600,
+                transaction_id: "aUQkpyT7WCtGGt9zQgXRzKCw3Yy2TN8qSRf27ZMpPXq"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "8UK2hwxW3emCG98x2VHqJXBCLRNKnyrybHrdAqQyJgiE"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_veax_state_changes() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        OldNeardataProvider::mainnet(),
+        IndexerOptions {
+            range: BlockIterator::iterator(143_268_885..=143_268_892),
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(indexer.handler.state_changes.contains(&PoolChangeEvent {
+        pool_id: "VEAX-wrap.near-ftv2.nekotoken.near".to_owned(),
+        receipt_id: "8UK2hwxW3emCG98x2VHqJXBCLRNKnyrybHrdAqQyJgiE"
+            .parse()
+            .unwrap(),
+        block_timestamp_nanosec: 1743578885583673600,
+        block_height: 143268887,
+        pool: PoolType::Veax(VeaxPool {
+            pool: (
+                "wrap.near".parse().unwrap(),
+                "ftv2.nekotoken.near".parse().unwrap()
+            ),
+            r#type: "swap".to_string(),
+            amounts_a: vec![
+                310706104173518316206649170,
+                0,
+                0,
+                0,
+                148467568607602465796709,
+                0,
+                0,
+                0
+            ],
+            amounts_b: vec![
+                18240644752218963859017372942466,
+                0,
+                0,
+                0,
+                38455785246118593271662824386,
+                0,
+                0,
+                910748486800011083601441410909
+            ],
+            sqrt_prices: vec![
+                242.29541716577376,
+                242.3075316337779,
+                242.3317623869413,
+                242.3802311627362,
+                242.4771977989848,
+                242.67124746441976,
+                243.0598128017999,
+                243.83881098588833
+            ],
+            liquidities: vec![
+                7.528266512667497e28,
+                0.0,
+                0.0,
+                0.0,
+                3.599999999999997e25,
+                0.0,
+                0.0,
+                0.0
+            ]
+        })
+    }));
 }

@@ -12,8 +12,8 @@ use inindexer::{
     },
     IncompleteTransaction, Indexer, TransactionReceipt,
 };
-use intear_events::events::trade::trade_pool_change::AidolsPool;
 use intear_events::events::trade::trade_pool_change::GraFunPool;
+use intear_events::events::trade::trade_pool_change::{AidolsPool, VeaxPool};
 use ref_trade_detection::REF_CONTRACT_ID;
 use ref_trade_detection::TESTNET_REF_CONTRACT_ID;
 
@@ -24,8 +24,11 @@ mod grafun_trade_detection;
 pub mod redis_handler;
 mod ref_finance_state;
 mod ref_trade_detection;
+mod refdcl_trade_detection;
 #[cfg(test)]
 mod tests;
+mod veax_state;
+mod veax_trade_detection;
 
 type PoolId = String;
 
@@ -258,6 +261,30 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
             self.is_testnet,
         )
         .await;
+        refdcl_trade_detection::detect(
+            receipt,
+            transaction,
+            block,
+            &mut self.handler,
+            self.is_testnet,
+        )
+        .await;
+        veax_trade_detection::detect(
+            receipt,
+            transaction,
+            block,
+            &mut self.handler,
+            self.is_testnet,
+        )
+        .await;
+        veax_state::detect_changes(
+            receipt,
+            transaction,
+            block,
+            &mut self.handler,
+            self.is_testnet,
+        )
+        .await;
         Ok(())
     }
 
@@ -305,6 +332,7 @@ pub enum PoolType {
     Ref(ref_finance_state::Pool),
     Aidols(AidolsPool),
     GraFun(GraFunPool),
+    Veax(VeaxPool),
 }
 
 pub(crate) fn find_parent_receipt<'a>(
