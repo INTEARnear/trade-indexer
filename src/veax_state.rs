@@ -39,5 +39,5 @@ pub async fn detect_changes(
 }
 
 pub fn create_veax_pool_id(tokens: &(AccountId, AccountId)) -> PoolId {
-    format!("VEAX-{}-{}", tokens.0, tokens.1)
+    format!("VEAX-{},{}", tokens.0, tokens.1)
 }

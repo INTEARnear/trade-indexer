@@ -10,6 +10,7 @@ use inindexer::{
 };
 use serde::{Deserialize, Deserializer};
 
+use crate::veax_state::create_veax_pool_id;
 use crate::{BalanceChangeSwap, PoolId, RawPoolSwap, TradeContext, TradeEventHandler};
 
 pub const VEAX_CONTRACT_ID: &str = "veax.near";
@@ -97,8 +98,4 @@ pub async fn detect(
             }
         }
     }
-}
-
-pub fn create_veax_pool_id(tokens: &(AccountId, AccountId)) -> PoolId {
-    format!("VEAX-{}-{}", tokens.0, tokens.1)
 }
