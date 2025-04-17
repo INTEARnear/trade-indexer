@@ -11,7 +11,7 @@ use inindexer::{
 use serde::{Deserialize, Deserializer};
 
 use crate::veax_state::create_veax_pool_id;
-use crate::{BalanceChangeSwap, PoolId, RawPoolSwap, TradeContext, TradeEventHandler};
+use crate::{BalanceChangeSwap, RawPoolSwap, TradeContext, TradeEventHandler};
 
 pub const VEAX_CONTRACT_ID: &str = "veax.near";
 
