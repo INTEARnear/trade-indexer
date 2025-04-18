@@ -1844,7 +1844,7 @@ async fn detects_veax_trades() {
             .unwrap(),
         vec![(
             RawPoolSwap {
-                pool: "VEAX-wrap.near-ftv2.nekotoken.near".to_owned(),
+                pool: "VEAX-wrap.near,ftv2.nekotoken.near".to_owned(),
                 token_in: "wrap.near".parse().unwrap(),
                 token_out: "ftv2.nekotoken.near".parse().unwrap(),
                 amount_in: 2500000000000000000000000,
@@ -1879,7 +1879,7 @@ async fn detects_veax_trades() {
                     )
                 ]),
                 pool_swaps: vec![RawPoolSwap {
-                    pool: "VEAX-wrap.near-ftv2.nekotoken.near".to_owned(),
+                    pool: "VEAX-wrap.near,ftv2.nekotoken.near".to_owned(),
                     token_in: "wrap.near".parse().unwrap(),
                     token_out: "ftv2.nekotoken.near".parse().unwrap(),
                     amount_in: 2500000000000000000000000,
@@ -1926,7 +1926,7 @@ async fn detects_veax_state_changes() {
     .unwrap();
 
     assert!(indexer.handler.state_changes.contains(&PoolChangeEvent {
-        pool_id: "VEAX-wrap.near-ftv2.nekotoken.near".to_owned(),
+        pool_id: "VEAX-wrap.near,ftv2.nekotoken.near".to_owned(),
         receipt_id: "8UK2hwxW3emCG98x2VHqJXBCLRNKnyrybHrdAqQyJgiE"
             .parse()
             .unwrap(),
