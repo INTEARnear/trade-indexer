@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-inindexer = "3.0.0"
+inindexer = "4.0.0-rc.1"
 async-trait = "0.1.80"
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
 log = "0.4.21"
@@ -15,5 +15,5 @@ serde_json = "1.0.116"
 borsh = "1.5.1"
 dotenv = "0.15.0"
 redis = { version = "0.25.3", features = [ "tokio-rustls-comp", "connection-manager" ] }
-inevents-redis = { git = "https://github.com/INTEARnear/inevents" }
-intear-events = { git = "https://github.com/INTEARnear/intear-events" }
+inevents-redis = { git = "https://github.com/INTEARnear/inevents", branch = "testnet" }
+intear-events = { git = "https://github.com/INTEARnear/intear-events", branch = "testnet" }
