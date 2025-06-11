@@ -1981,3 +1981,101 @@ async fn detects_veax_state_changes() {
         })
     }));
 }
+
+#[tokio::test]
+async fn detects_ref_degen_pool_state_changes() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        OldNeardataProvider::mainnet(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 150_611_257,
+                end_exclusive: Some(150_611_259),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        indexer.handler.state_changes,
+        vec![
+            PoolChangeEvent {
+                pool_id: "REF-5949".to_owned(),
+                receipt_id: "FK1PA1PxUgPGuVTjkbAD6y2HUvpZLSHAmhJuXEHzHowN"
+                    .parse()
+                    .unwrap(),
+                block_timestamp_nanosec: 1749623222162246603,
+                block_height: 150611258,
+                pool: PoolType::Ref(ref_finance_state::Pool::DegenSwapPool(
+                    ref_finance_state::DegenSwapPool {
+                        token_account_ids: vec![
+                            "nbtc.bridge.near".parse().unwrap(),
+                            "wrap.near".parse().unwrap()
+                        ],
+                        token_decimals: vec![8, 24],
+                        c_amounts: vec![4642186285073671824501341, 350434995831534383783544203076],
+                        volumes: vec![
+                            ref_finance_state::SwapVolume {
+                                input: 16929762,
+                                output: 18260074
+                            },
+                            ref_finance_state::SwapVolume {
+                                input: 5353689043801567558421196948,
+                                output: 4948812684957635773598314254
+                            }
+                        ],
+                        total_fee: 30,
+                        shares_prefix: vec![2, 61, 23, 0, 0],
+                        shares_total_supply: 1445246300131913021202509935799,
+                        init_amp_factor: 60,
+                        target_amp_factor: 60,
+                        init_amp_time: 0,
+                        stop_amp_time: 0
+                    }
+                ))
+            },
+            PoolChangeEvent {
+                pool_id: "REF-5470".to_owned(),
+                receipt_id: "GnytSH1oG2HiU3m7WFr6XUWMsVNkagi9hxvVGLMCxQG9"
+                    .parse()
+                    .unwrap(),
+                block_timestamp_nanosec: 1749623222162246603,
+                block_height: 150611258,
+                pool: PoolType::Ref(ref_finance_state::Pool::SimplePool(
+                    ref_finance_state::SimplePool {
+                        token_account_ids: vec![
+                            "wrap.near".parse().unwrap(),
+                            "usdt.tether-token.near".parse().unwrap()
+                        ],
+                        amounts: vec![63747110087455234309348061106, 167818251621],
+                        volumes: vec![
+                            ref_finance_state::SwapVolume {
+                                input: 10171840847556632003695494413256,
+                                output: 49171401369268
+                            },
+                            ref_finance_state::SwapVolume {
+                                input: 49152712420352,
+                                output: 10161805147674006933064216166896
+                            }
+                        ],
+                        total_fee: 1,
+                        exchange_fee: 0,
+                        referral_fee: 0,
+                        shares_prefix: vec![2, 94, 21, 0, 0],
+                        shares_total_supply: 502826573823564442482190
+                    }
+                ))
+            }
+        ]
+    );
+}

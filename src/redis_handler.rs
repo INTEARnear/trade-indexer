@@ -12,7 +12,7 @@ use intear_events::events::trade::liquidity_pool::LiquidityPoolEvent;
 use intear_events::events::trade::memecooking_deposit::MemeCookingDepositEvent;
 use intear_events::events::trade::memecooking_withdraw::MemeCookingWithdrawEvent;
 use intear_events::events::trade::trade_pool::TradePoolEvent;
-use intear_events::events::trade::trade_pool_change::TradePoolChangeEvent;
+use intear_events::events::trade::trade_pool_change::{RefDegenSwapPool, TradePoolChangeEvent};
 use intear_events::events::trade::trade_pool_change::{
     RefPool, RefRatedSwapPool, RefSimplePool, RefStableSwapPool, RefSwapVolume,
 };
@@ -142,6 +142,31 @@ impl TradeEventHandler for PushToRedisStream {
                         }
                         ref_finance_state::Pool::RatedSwapPool(pool) => {
                             RefPool::RatedSwapPool(RefRatedSwapPool {
+                                token_account_ids: pool
+                                    .token_account_ids
+                                    .into_iter()
+                                    .map(|account_id| account_id.parse().unwrap())
+                                    .collect(),
+                                token_decimals: pool.token_decimals,
+                                c_amounts: pool.c_amounts,
+                                volumes: pool
+                                    .volumes
+                                    .into_iter()
+                                    .map(|volume| RefSwapVolume {
+                                        input: volume.input,
+                                        output: volume.output,
+                                    })
+                                    .collect(),
+                                total_fee: pool.total_fee,
+                                shares_total_supply: pool.shares_total_supply,
+                                init_amp_factor: pool.init_amp_factor,
+                                target_amp_factor: pool.target_amp_factor,
+                                init_amp_time: pool.init_amp_time,
+                                stop_amp_time: pool.stop_amp_time,
+                            })
+                        }
+                        ref_finance_state::Pool::DegenSwapPool(pool) => {
+                            RefPool::DegenSwapPool(RefDegenSwapPool {
                                 token_account_ids: pool
                                     .token_account_ids
                                     .into_iter()
