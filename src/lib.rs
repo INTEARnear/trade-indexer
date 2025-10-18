@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use aidols_trade_detection::AIDOLS_CONTRACT_ID;
 use async_trait::async_trait;
 use borsh::BorshDeserialize;
-use grafun_trade_detection::GRAFUN_CONTRACT_ID;
 use inindexer::{
     near_indexer_primitives::{
         types::{AccountId, Balance, BlockHeight},
@@ -12,23 +11,18 @@ use inindexer::{
     },
     IncompleteTransaction, Indexer, TransactionReceipt,
 };
-use intear_events::events::trade::trade_pool_change::GraFunPool;
-use intear_events::events::trade::trade_pool_change::{AidolsPool, VeaxPool};
+use intear_events::events::trade::trade_pool_change::AidolsPool;
 use ref_trade_detection::REF_CONTRACT_ID;
 use ref_trade_detection::TESTNET_REF_CONTRACT_ID;
 
 mod aidols_state;
 mod aidols_trade_detection;
-mod grafun_state;
-mod grafun_trade_detection;
 pub mod redis_handler;
 mod ref_finance_state;
 mod ref_trade_detection;
 mod refdcl_trade_detection;
 #[cfg(test)]
 mod tests;
-mod veax_state;
-mod veax_trade_detection;
 
 type PoolId = String;
 
@@ -66,7 +60,6 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
             REF_CONTRACT_ID
         };
         let aidols_contract_id = AIDOLS_CONTRACT_ID;
-        let grafun_contract_id = GRAFUN_CONTRACT_ID;
         for shard in block.shards.iter() {
             for state_change in shard.state_changes.iter() {
                 if let StateChangeValueView::DataUpdate {
@@ -173,57 +166,6 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                 })
                                 .await;
                         }
-                    } else if account_id == grafun_contract_id {
-                        let receipt_id =
-                            if let StateChangeCauseView::ReceiptProcessing { receipt_hash } =
-                                &state_change.cause
-                            {
-                                receipt_hash
-                            } else {
-                                log::warn!(
-                                    "Update not caused by a receipt in block {}",
-                                    block.block.header.height
-                                );
-                                continue;
-                            };
-                        let key = key.as_slice();
-                        #[allow(clippy::if_same_then_else)]
-                        let mut without_prefix = if let Some(data) = key.strip_prefix(b"s") {
-                            data
-                        } else {
-                            continue;
-                        };
-                        let Ok(token_id) =
-                            <AccountId as BorshDeserialize>::deserialize(&mut without_prefix)
-                        else {
-                            log::warn!("Invalid account id: {:02x?}", key);
-                            continue;
-                        };
-                        log::debug!("Pool changed: {token_id}");
-                        if let Ok(pool) =
-                            <grafun_state::GraFunPoolState as BorshDeserialize>::deserialize(
-                                &mut value.as_slice(),
-                            )
-                        {
-                            self.handler
-                                .on_pool_change(PoolChangeEvent {
-                                    pool_id: grafun_trade_detection::create_grafun_pool_id(
-                                        &token_id,
-                                    ),
-                                    receipt_id: *receipt_id,
-                                    block_timestamp_nanosec: block.block.header.timestamp_nanosec
-                                        as u128,
-                                    block_height: block.block.header.height,
-                                    pool: PoolType::GraFun(GraFunPool {
-                                        token_id: token_id.clone(),
-                                        token_hold: pool.token_hold,
-                                        wnear_hold: pool.wnear_hold,
-                                        is_deployed: pool.is_deployed,
-                                        is_tradable: pool.is_tradable,
-                                    }),
-                                })
-                                .await;
-                        }
                     }
                 }
             }
@@ -253,31 +195,7 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
             self.is_testnet,
         )
         .await;
-        grafun_trade_detection::detect(
-            receipt,
-            transaction,
-            block,
-            &mut self.handler,
-            self.is_testnet,
-        )
-        .await;
         refdcl_trade_detection::detect(
-            receipt,
-            transaction,
-            block,
-            &mut self.handler,
-            self.is_testnet,
-        )
-        .await;
-        veax_trade_detection::detect(
-            receipt,
-            transaction,
-            block,
-            &mut self.handler,
-            self.is_testnet,
-        )
-        .await;
-        veax_state::detect_changes(
             receipt,
             transaction,
             block,
@@ -331,8 +249,6 @@ pub struct PoolChangeEvent {
 pub enum PoolType {
     Ref(ref_finance_state::Pool),
     Aidols(AidolsPool),
-    GraFun(GraFunPool),
-    Veax(VeaxPool),
 }
 
 pub(crate) fn find_parent_receipt<'a>(
