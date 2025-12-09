@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use aidols_trade_detection::AIDOLS_CONTRACT_ID;
 use async_trait::async_trait;
 use borsh::BorshDeserialize;
+use inindexer::near_utils::FtBalance;
 use inindexer::{
     near_indexer_primitives::{
-        types::{AccountId, Balance, BlockHeight},
+        types::{AccountId, BlockHeight},
         views::{StateChangeCauseView, StateChangeValueView},
         CryptoHash, StreamerMessage,
     },
@@ -226,8 +227,8 @@ pub struct RawPoolSwap {
     pool: PoolId,
     token_in: AccountId,
     token_out: AccountId,
-    amount_in: Balance,
-    amount_out: Balance,
+    amount_in: FtBalance,
+    amount_out: FtBalance,
 }
 
 #[derive(Debug, PartialEq)]

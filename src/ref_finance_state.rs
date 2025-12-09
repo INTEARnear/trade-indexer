@@ -1,5 +1,5 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use inindexer::near_indexer_primitives::types::Balance;
+use inindexer::near_utils::FtBalance;
 
 type SdkTimestamp = u64;
 type SdkAccountId = String;
@@ -18,7 +18,7 @@ pub struct SimplePool {
     /// List of tokens in the pool.
     pub token_account_ids: Vec<SdkAccountId>,
     /// How much NEAR this contract has.
-    pub amounts: Vec<Balance>,
+    pub amounts: Vec<FtBalance>,
     /// Volumes accumulated by this pool.
     pub volumes: Vec<SwapVolume>,
     /// Fee charged for swap (gets divided by FEE_DIVISOR).
@@ -28,9 +28,9 @@ pub struct SimplePool {
     /// Obsolete, reserve to simplify upgrade.
     pub referral_fee: u32,
     /// Shares of the pool by liquidity providers.
-    pub shares_prefix: Vec<u8>, // actual type: pub shares: LookupMap<SdkAccountId, Balance>,
+    pub shares_prefix: Vec<u8>, // actual type: pub shares: LookupMap<SdkAccountId, FtBalance>,
     /// Total number of shares.
-    pub shares_total_supply: Balance,
+    pub shares_total_supply: FtBalance,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq)]
@@ -46,15 +46,15 @@ pub struct StableSwapPool {
     /// Each decimals for tokens in the pool
     pub token_decimals: Vec<u8>,
     /// token amounts in comparable decimal.
-    pub c_amounts: Vec<Balance>,
+    pub c_amounts: Vec<FtBalance>,
     /// Volumes accumulated by this pool.
     pub volumes: Vec<SwapVolume>,
     /// Fee charged for swap (gets divided by FEE_DIVISOR).
     pub total_fee: u32,
     /// Shares of the pool by liquidity providers.
-    pub shares_prefix: Vec<u8>, // actual type: pub shares: LookupMap<SdkAccountId, Balance>,
+    pub shares_prefix: Vec<u8>, // actual type: pub shares: LookupMap<SdkAccountId, FtBalance>,
     /// Total number of shares.
-    pub shares_total_supply: Balance,
+    pub shares_total_supply: FtBalance,
     /// Initial amplification coefficient.
     pub init_amp_factor: u128,
     /// Target for ramping up amplification coefficient.
@@ -72,15 +72,15 @@ pub struct RatedSwapPool {
     /// Each decimals for tokens in the pool
     pub token_decimals: Vec<u8>,
     /// token amounts in comparable decimal.
-    pub c_amounts: Vec<Balance>,
+    pub c_amounts: Vec<FtBalance>,
     /// Volumes accumulated by this pool.
     pub volumes: Vec<SwapVolume>,
     /// Fee charged for swap (gets divided by FEE_DIVISOR).
     pub total_fee: u32,
     /// Shares of the pool by liquidity providers.
-    pub shares_prefix: Vec<u8>, // actual type: pub shares: LookupMap<SdkAccountId, Balance>,
+    pub shares_prefix: Vec<u8>, // actual type: pub shares: LookupMap<SdkAccountId, FtBalance>,
     /// Total number of shares.
-    pub shares_total_supply: Balance,
+    pub shares_total_supply: FtBalance,
     /// Initial amplification coefficient.
     pub init_amp_factor: u128,
     /// Target for ramping up amplification coefficient.
@@ -98,15 +98,15 @@ pub struct DegenSwapPool {
     /// Each decimals for tokens in the pool
     pub token_decimals: Vec<u8>,
     /// token amounts in comparable decimal.
-    pub c_amounts: Vec<Balance>,
+    pub c_amounts: Vec<FtBalance>,
     /// Volumes accumulated by this pool.
     pub volumes: Vec<SwapVolume>,
     /// Fee charged for swap (gets divided by FEE_DIVISOR).
     pub total_fee: u32,
     /// Shares of the pool by liquidity providers.
-    pub shares_prefix: Vec<u8>, // actual type: pub shares: LookupMap<SdkAccountId, Balance>,
+    pub shares_prefix: Vec<u8>, // actual type: pub shares: LookupMap<SdkAccountId, FtBalance>,
     /// Total number of shares.
-    pub shares_total_supply: Balance,
+    pub shares_total_supply: FtBalance,
     /// Initial amplification coefficient.
     pub init_amp_factor: u128,
     /// Target for ramping up amplification coefficient.

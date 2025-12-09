@@ -2,11 +2,8 @@ use std::collections::HashMap;
 
 use inindexer::near_utils::EventLogData;
 use inindexer::{
-    near_indexer_primitives::{
-        types::{AccountId, Balance},
-        StreamerMessage,
-    },
-    near_utils::dec_format,
+    near_indexer_primitives::{types::AccountId, StreamerMessage},
+    near_utils::{dec_format, FtBalance},
     IncompleteTransaction, TransactionReceipt,
 };
 use serde::Deserialize;
@@ -19,19 +16,19 @@ pub const AIDOLS_CONTRACT_ID: &str = "aidols.near";
 #[allow(dead_code)]
 struct SwapEvent {
     #[serde(with = "dec_format")]
-    input_amount: Balance,
+    input_amount: FtBalance,
     input_token: AccountId,
     #[serde(with = "dec_format")]
-    output_amount: Balance,
+    output_amount: FtBalance,
     output_token: AccountId,
     referral_id: Option<AccountId>,
     #[serde(with = "dec_format")]
-    token_hold: Balance,
+    token_hold: FtBalance,
     user_id: AccountId,
     #[serde(with = "dec_format")]
-    wnear_commission: Balance,
+    wnear_commission: FtBalance,
     #[serde(with = "dec_format")]
-    wnear_hold: Balance,
+    wnear_hold: FtBalance,
 }
 
 pub async fn detect(

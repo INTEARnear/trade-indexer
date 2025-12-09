@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 
-use inindexer::near_utils::EventLogData;
+use inindexer::near_utils::{EventLogData, FtBalance};
 use inindexer::{
-    near_indexer_primitives::{
-        types::{AccountId, Balance},
-        StreamerMessage,
-    },
+    near_indexer_primitives::{types::AccountId, StreamerMessage},
     near_utils::dec_format,
     IncompleteTransaction, TransactionReceipt,
 };
@@ -19,17 +16,17 @@ pub const REFDCL_CONTRACT_ID: &str = "dclv2.ref-labs.near";
 #[allow(dead_code)]
 struct SwapEvent {
     #[serde(with = "dec_format")]
-    amount_in: Balance,
+    amount_in: FtBalance,
     #[serde(with = "dec_format")]
-    amount_out: Balance,
+    amount_out: FtBalance,
     pool_id: String,
     #[serde(with = "dec_format")]
-    protocol_fee: Balance,
+    protocol_fee: FtBalance,
     swapper: AccountId,
     token_in: AccountId,
     token_out: AccountId,
     #[serde(with = "dec_format")]
-    total_fee: Balance,
+    total_fee: FtBalance,
 }
 
 pub async fn detect(

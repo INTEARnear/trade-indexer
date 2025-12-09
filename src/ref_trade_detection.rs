@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use inindexer::near_utils::dec_format_vec;
 use inindexer::{
     near_indexer_primitives::{
-        types::{AccountId, Balance},
+        types::AccountId,
         views::{ActionView, ReceiptEnumView},
         StreamerMessage,
     },
-    near_utils::dec_format,
+    near_utils::{dec_format, FtBalance},
     IncompleteTransaction, TransactionReceipt,
 };
 use serde::Deserialize;
@@ -100,7 +100,7 @@ pub async fn detect(
                                     return;
                                 };
                                 let amounts = amounts.split("\", \"").collect::<Vec<_>>();
-                                let Ok(_shares) = shares.parse::<Balance>() else {
+                                let Ok(_shares) = shares.parse::<FtBalance>() else {
                                     return;
                                 };
                                 let mut tokens = HashMap::new();
@@ -108,7 +108,7 @@ pub async fn detect(
                                     let Some((amount, token)) = amount.split_once(' ') else {
                                         return;
                                     };
-                                    let Ok(amount) = amount.parse::<Balance>() else {
+                                    let Ok(amount) = amount.parse::<FtBalance>() else {
                                         return;
                                     };
                                     let Ok(token) = token.parse::<AccountId>() else {
@@ -148,7 +148,7 @@ pub async fn detect(
                                 else {
                                     return;
                                 };
-                                let Ok(_shares) = shares.parse::<Balance>() else {
+                                let Ok(_shares) = shares.parse::<FtBalance>() else {
                                     return;
                                 };
                                 let Some(tokens) = tokens.strip_suffix("\"]") else {
@@ -160,7 +160,7 @@ pub async fn detect(
                                     let Some((amount, token)) = token.split_once(' ') else {
                                         return;
                                     };
-                                    let Ok(amount) = amount.parse::<Balance>() else {
+                                    let Ok(amount) = amount.parse::<FtBalance>() else {
                                         return;
                                     };
                                     let Ok(token) = token.parse::<AccountId>() else {
@@ -232,8 +232,8 @@ pub async fn detect(
                     if let (Ok(token_in), Ok(token_out), Ok(amount_in), Ok(amount_out)) = (
                         token_in.parse::<AccountId>(),
                         token_out.parse::<AccountId>(),
-                        amount_in.parse::<Balance>(),
-                        amount_out.parse::<Balance>(),
+                        amount_in.parse::<FtBalance>(),
+                        amount_out.parse::<FtBalance>(),
                     ) {
                         log::info!(
                             "{} exchanged {} {} for {} {}",
@@ -344,7 +344,7 @@ struct FtTransferCallArgsAddLiquidity {
     pool_id: u64,
     #[serde(with = "dec_format_vec")]
     #[allow(dead_code)]
-    amounts: Vec<Balance>,
+    amounts: Vec<FtBalance>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -352,10 +352,10 @@ struct RemoveLiquidity {
     pool_id: u64,
     #[serde(with = "dec_format")]
     #[allow(dead_code)]
-    shares: Balance,
+    shares: FtBalance,
     #[serde(with = "dec_format_vec")]
     #[allow(dead_code)]
-    min_amounts: Vec<Balance>,
+    min_amounts: Vec<FtBalance>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -365,11 +365,11 @@ struct Action {
     token_in: AccountId,
     token_out: AccountId,
     #[serde(with = "dec_format", default)]
-    amount_in: Option<Balance>,
+    amount_in: Option<FtBalance>,
     #[serde(with = "dec_format", default)]
-    min_amount_out: Option<Balance>,
+    min_amount_out: Option<FtBalance>,
     #[serde(with = "dec_format", default)]
-    amount_out: Option<Balance>,
+    amount_out: Option<FtBalance>,
     #[serde(with = "dec_format", default)]
-    max_amount_in: Option<Balance>,
+    max_amount_in: Option<FtBalance>,
 }
