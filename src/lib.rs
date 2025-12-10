@@ -39,6 +39,7 @@ pub trait TradeEventHandler: Send + Sync + 'static {
         &mut self,
         context: TradeContext,
         balance_changes: BalanceChangeSwap,
+        referrer: Option<String>,
     );
     async fn on_pool_change(&mut self, pool: PoolChangeEvent);
     async fn on_liquidity_pool(

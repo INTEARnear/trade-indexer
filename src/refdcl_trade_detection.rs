@@ -80,6 +80,7 @@ pub async fn detect(
                                         amount_out: swap.amount_out,
                                     }],
                                 },
+                                None,
                             )
                             .await;
                     }

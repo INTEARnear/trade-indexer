@@ -76,6 +76,7 @@ impl TradeEventHandler for PushToRedisStream {
         &mut self,
         context: TradeContext,
         balance_changes: BalanceChangeSwap,
+        referrer: Option<String>,
     ) {
         self.swap_stream.add_event(TradeSwapEvent {
             balance_changes: balance_changes.balance_changes,
@@ -84,6 +85,7 @@ impl TradeEventHandler for PushToRedisStream {
             block_timestamp_nanosec: context.block_timestamp_nanosec,
             transaction_id: context.transaction_id,
             receipt_id: context.receipt_id,
+            referrer,
         });
     }
 

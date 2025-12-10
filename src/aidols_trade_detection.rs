@@ -86,6 +86,7 @@ pub async fn detect(
                                         amount_out: swap.output_amount,
                                     }],
                                 },
+                                swap.referral_id.map(|id| id.to_string()),
                             )
                             .await;
                     }

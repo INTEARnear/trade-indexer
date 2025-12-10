@@ -37,6 +37,7 @@ pub async fn detect(
         let mut trader = receipt.receipt.receipt.predecessor_id.clone();
         let mut swap_action_pools = vec![];
         let mut swap_logs_in_receipt = Vec::new();
+        let mut referrer = None;
         if let ReceiptEnumView::Action { actions, .. } = &receipt.receipt.receipt.receipt {
             for action in actions {
                 if let ActionView::FunctionCall {
@@ -62,6 +63,9 @@ pub async fn detect(
                             if let Ok(call) =
                                 serde_json::from_str::<FtTransferCallArgsExecute>(&call.msg)
                             {
+                                if let Some(referral_id) = call.referral_id {
+                                    referrer = Some(referral_id.to_string());
+                                }
                                 swap_action_pools
                                     .extend(call.actions.into_iter().map(|a| a.pool_id))
                             } else if let Ok(call) =
@@ -73,14 +77,23 @@ pub async fn detect(
                         }
                     } else if method_name == "swap" {
                         if let Ok(call) = serde_json::from_slice::<MethodSwap>(args) {
+                            if let Some(referral_id) = call.referral_id {
+                                referrer = Some(referral_id.to_string());
+                            }
                             swap_action_pools.extend(call.actions.into_iter().map(|a| a.pool_id));
                         }
                     } else if method_name == "swap_by_output" {
                         if let Ok(call) = serde_json::from_slice::<MethodSwap>(args) {
+                            if let Some(referral_id) = call.referral_id {
+                                referrer = Some(referral_id.to_string());
+                            }
                             swap_action_pools.extend(call.actions.into_iter().map(|a| a.pool_id));
                         }
                     } else if method_name == "execute_actions" {
                         if let Ok(call) = serde_json::from_slice::<MethodExecuteActions>(args) {
+                            if let Some(referral_id) = call.referral_id {
+                                referrer = Some(referral_id.to_string());
+                            }
                             swap_action_pools.extend(call.actions.into_iter().map(|a| a.pool_id));
                         }
                     } else if method_name == "add_liquidity" {
@@ -303,7 +316,7 @@ pub async fn detect(
                 pool_swaps: raw_pool_swaps,
             };
             handler
-                .on_balance_change_swap(context, balance_changes)
+                .on_balance_change_swap(context, balance_changes, referrer)
                 .await;
         }
     }
@@ -316,11 +329,15 @@ pub fn create_ref_pool_id(pool_id: u64) -> PoolId {
 #[derive(Deserialize, Debug)]
 struct MethodSwap {
     actions: Vec<Action>,
+    #[serde(default)]
+    referral_id: Option<AccountId>,
 }
 
 #[derive(Deserialize, Debug)]
 struct MethodExecuteActions {
     actions: Vec<Action>,
+    #[serde(default)]
+    referral_id: Option<AccountId>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -332,6 +349,8 @@ struct FtTransferCallArgs {
 #[derive(Deserialize, Debug)]
 struct FtTransferCallArgsExecute {
     actions: Vec<Action>,
+    #[serde(default)]
+    referral_id: Option<AccountId>,
 }
 
 #[derive(Deserialize, Debug)]

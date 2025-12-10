@@ -18,7 +18,8 @@ use crate::{
 #[derive(Default)]
 struct TestHandler {
     pool_swaps: HashMap<AccountId, Vec<(RawPoolSwap, TradeContext)>>,
-    balance_change_swaps: HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext)>>,
+    balance_change_swaps:
+        HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext, Option<String>)>>,
     state_changes: Vec<PoolChangeEvent>,
     liquidity_pool_events: Vec<(TradeContext, PoolId, HashMap<AccountId, i128>)>,
 }
@@ -36,11 +37,12 @@ impl TradeEventHandler for TestHandler {
         &mut self,
         context: TradeContext,
         balance_changes: BalanceChangeSwap,
+        referrer: Option<String>,
     ) {
         self.balance_change_swaps
             .entry(context.trader.clone())
             .or_default()
-            .push((balance_changes, context));
+            .push((balance_changes, context, referrer));
     }
 
     async fn on_pool_change(&mut self, pool: PoolChangeEvent) {
@@ -77,8 +79,8 @@ async fn detects_ref_trades() {
                 postfetch_blocks: 0,
             }),
             ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 118_210_089,
-                end_exclusive: Some(118_210_094),
+                start_inclusive: 176281650,
+                end_exclusive: Some(176281660),
             })
         },
     )
@@ -89,24 +91,26 @@ async fn detects_ref_trades() {
         *indexer
             .handler
             .pool_swaps
-            .get(&"skyto.near".parse::<AccountId>().unwrap())
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
             .unwrap(),
         vec![(
             RawPoolSwap {
-                pool: "REF-5059".to_owned(),
+                pool: "REF-5515".to_owned(),
                 token_in: "wrap.near".parse().unwrap(),
-                token_out: "meek.tkn.near".parse().unwrap(),
-                amount_in: 1000000000000000000000000,
-                amount_out: 93815865650297411273703890521643
-            },
-            TradeContext {
-                trader: "skyto.near".parse().unwrap(),
-                block_height: 118210091,
-                block_timestamp_nanosec: 1714804406674985128,
-                transaction_id: "E4okfxk1x6GdXA5YAwZpzyAqBnnXfo5XfKxj6cMF62Ky"
+                token_out: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
                     .parse()
                     .unwrap(),
-                receipt_id: "VPrcZiwgFqKgW9eev4CUKJ4TN8Jk1jSZ2sqFAHothnN"
+                amount_in: 1000000000000000000000000,
+                amount_out: 1833478
+            },
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 176281654,
+                block_timestamp_nanosec: 1765398885775797408,
+                transaction_id: "DuwK7zJfaArmEvSZ29KsZhRAMyZ9GuMmXtE5BUX4vaHT"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "B7pQmNfMQ8j6zBYRnzRsUoNw8mkPmDArWz8vff7X7TFS"
                     .parse()
                     .unwrap(),
             }
@@ -116,36 +120,41 @@ async fn detects_ref_trades() {
         *indexer
             .handler
             .balance_change_swaps
-            .get(&"skyto.near".parse::<AccountId>().unwrap())
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
             .unwrap(),
         vec![(
             BalanceChangeSwap {
                 balance_changes: HashMap::from_iter([
                     ("wrap.near".parse().unwrap(), -1000000000000000000000000),
                     (
-                        "meek.tkn.near".parse().unwrap(),
-                        93815865650297411273703890521643
+                        "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                            .parse()
+                            .unwrap(),
+                        1833478
                     )
                 ]),
                 pool_swaps: vec![RawPoolSwap {
-                    pool: "REF-5059".to_owned(),
+                    pool: "REF-5515".to_owned(),
                     token_in: "wrap.near".parse().unwrap(),
-                    token_out: "meek.tkn.near".parse().unwrap(),
+                    token_out: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                        .parse()
+                        .unwrap(),
                     amount_in: 1000000000000000000000000,
-                    amount_out: 93815865650297411273703890521643
+                    amount_out: 1833478
                 }]
             },
             TradeContext {
-                trader: "skyto.near".parse().unwrap(),
-                block_height: 118210091,
-                block_timestamp_nanosec: 1714804406674985128,
-                transaction_id: "E4okfxk1x6GdXA5YAwZpzyAqBnnXfo5XfKxj6cMF62Ky"
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 176281654,
+                block_timestamp_nanosec: 1765398885775797408,
+                transaction_id: "DuwK7zJfaArmEvSZ29KsZhRAMyZ9GuMmXtE5BUX4vaHT"
                     .parse()
                     .unwrap(),
-                receipt_id: "VPrcZiwgFqKgW9eev4CUKJ4TN8Jk1jSZ2sqFAHothnN"
+                receipt_id: "B7pQmNfMQ8j6zBYRnzRsUoNw8mkPmDArWz8vff7X7TFS"
                     .parse()
                     .unwrap(),
-            }
+            },
+            Some("dex-aggregator.intear.near".to_string())
         )]
     );
 }
@@ -292,13 +301,14 @@ async fn detects_ref_multistep_trades() {
                 receipt_id: "8Ux6ezDRgMAXsVtKysjhz7vvWSGrg5Fc2bYLeFVZACK"
                     .parse()
                     .unwrap(),
-            }
+            },
+            None
         )]
     );
 }
 
 #[tokio::test]
-async fn detects_ref_dragonbot_trades() {
+async fn detects_ref_tearbot_trades() {
     let mut indexer = TradeIndexer {
         handler: TestHandler::default(),
         is_testnet: false,
@@ -313,8 +323,8 @@ async fn detects_ref_dragonbot_trades() {
                 postfetch_blocks: 0,
             }),
             ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 118_209_234,
-                end_exclusive: Some(118_209_239),
+                start_inclusive: 176281537,
+                end_exclusive: Some(176281542),
             })
         },
     )
@@ -326,40 +336,160 @@ async fn detects_ref_dragonbot_trades() {
             .handler
             .pool_swaps
             .get(
-                &"kxf05k08ps1ol3zgcwvmkam_dragon.dragon_bot.near"
+                &"sneering_enigma.user.intear.near"
                     .parse::<AccountId>()
                     .unwrap()
             )
             .unwrap(),
-        vec![(
-            RawPoolSwap {
-                pool: "REF-5059".to_owned(),
-                token_in: "meek.tkn.near".parse().unwrap(),
-                token_out: "wrap.near".parse().unwrap(),
-                amount_in: 478481220062017777819333235161697,
-                amount_out: 9466638646302120499119272
-            },
-            TradeContext {
-                trader: "kxf05k08ps1ol3zgcwvmkam_dragon.dragon_bot.near"
-                    .parse()
-                    .unwrap(),
-                block_height: 118209236,
-                block_timestamp_nanosec: 1714803352814919506,
-                transaction_id: "C4pr5yYyxviWQkt4K7uVFaH14LWR43gcKpj1GDiV4nc8"
-                    .parse()
-                    .unwrap(),
-                receipt_id: "4xmgsfQ6YypjKC2hxts11YBuRNYjaavShtrpRAWxFHNu"
-                    .parse()
-                    .unwrap(),
-            }
-        )]
+        vec![
+            (
+                RawPoolSwap {
+                    pool: "REF-5720".to_owned(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "abg-966.meme-cooking.near".parse().unwrap(),
+                    amount_in: 6000000000000000000000,
+                    amount_out: 193501745035556127133
+                },
+                TradeContext {
+                    trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                    block_height: 176281539,
+                    block_timestamp_nanosec: 1765398816755525308,
+                    transaction_id: "DZ6cW9R9fErbuHAvEJ5ePQ5bXCqJCVHxHRR2FmLox2qg"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2m5w3t654ku8m4e1PJbUYg2agRWX2A2827NBMsTfUEQr"
+                        .parse()
+                        .unwrap(),
+                }
+            ),
+            (
+                RawPoolSwap {
+                    pool: "REF-5789".to_owned(),
+                    token_in: "abg-966.meme-cooking.near".parse().unwrap(),
+                    token_out: "bullish-1254.meme-cooking.near".parse().unwrap(),
+                    amount_in: 193501745035556127133,
+                    amount_out: 9544440457365313592258
+                },
+                TradeContext {
+                    trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                    block_height: 176281539,
+                    block_timestamp_nanosec: 1765398816755525308,
+                    transaction_id: "DZ6cW9R9fErbuHAvEJ5ePQ5bXCqJCVHxHRR2FmLox2qg"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2m5w3t654ku8m4e1PJbUYg2agRWX2A2827NBMsTfUEQr"
+                        .parse()
+                        .unwrap(),
+                }
+            ),
+            (
+                RawPoolSwap {
+                    pool: "REF-5846".to_owned(),
+                    token_in: "bullish-1254.meme-cooking.near".parse().unwrap(),
+                    token_out: "noear-324.meme-cooking.near".parse().unwrap(),
+                    amount_in: 9544440457365313592258,
+                    amount_out: 2363249266849562417601
+                },
+                TradeContext {
+                    trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                    block_height: 176281539,
+                    block_timestamp_nanosec: 1765398816755525308,
+                    transaction_id: "DZ6cW9R9fErbuHAvEJ5ePQ5bXCqJCVHxHRR2FmLox2qg"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2m5w3t654ku8m4e1PJbUYg2agRWX2A2827NBMsTfUEQr"
+                        .parse()
+                        .unwrap(),
+                }
+            ),
+            (
+                RawPoolSwap {
+                    pool: "REF-6558".to_owned(),
+                    token_in: "noear-324.meme-cooking.near".parse().unwrap(),
+                    token_out: "jambo-1679.meme-cooking.near".parse().unwrap(),
+                    amount_in: 2363249266849562417601,
+                    amount_out: 5039386076374332885
+                },
+                TradeContext {
+                    trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                    block_height: 176281539,
+                    block_timestamp_nanosec: 1765398816755525308,
+                    transaction_id: "DZ6cW9R9fErbuHAvEJ5ePQ5bXCqJCVHxHRR2FmLox2qg"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2m5w3t654ku8m4e1PJbUYg2agRWX2A2827NBMsTfUEQr"
+                        .parse()
+                        .unwrap(),
+                }
+            ),
+            (
+                RawPoolSwap {
+                    pool: "REF-6594".to_owned(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "zolanear-1726.meme-cooking.near".parse().unwrap(),
+                    amount_in: 4000000000000000000000,
+                    amount_out: 276893747748111517610
+                },
+                TradeContext {
+                    trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                    block_height: 176281539,
+                    block_timestamp_nanosec: 1765398816755525308,
+                    transaction_id: "DZ6cW9R9fErbuHAvEJ5ePQ5bXCqJCVHxHRR2FmLox2qg"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2m5w3t654ku8m4e1PJbUYg2agRWX2A2827NBMsTfUEQr"
+                        .parse()
+                        .unwrap(),
+                }
+            ),
+            (
+                RawPoolSwap {
+                    pool: "REF-6604".to_owned(),
+                    token_in: "zolanear-1726.meme-cooking.near".parse().unwrap(),
+                    token_out: "gp.token0.near".parse().unwrap(),
+                    amount_in: 276893747748111517610,
+                    amount_out: 3552779985208586898576
+                },
+                TradeContext {
+                    trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                    block_height: 176281539,
+                    block_timestamp_nanosec: 1765398816755525308,
+                    transaction_id: "DZ6cW9R9fErbuHAvEJ5ePQ5bXCqJCVHxHRR2FmLox2qg"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2m5w3t654ku8m4e1PJbUYg2agRWX2A2827NBMsTfUEQr"
+                        .parse()
+                        .unwrap(),
+                }
+            ),
+            (
+                RawPoolSwap {
+                    pool: "REF-6520".to_owned(),
+                    token_in: "gp.token0.near".parse().unwrap(),
+                    token_out: "jambo-1679.meme-cooking.near".parse().unwrap(),
+                    amount_in: 3552779985208586898576,
+                    amount_out: 3368505006729851836
+                },
+                TradeContext {
+                    trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                    block_height: 176281539,
+                    block_timestamp_nanosec: 1765398816755525308,
+                    transaction_id: "DZ6cW9R9fErbuHAvEJ5ePQ5bXCqJCVHxHRR2FmLox2qg"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "2m5w3t654ku8m4e1PJbUYg2agRWX2A2827NBMsTfUEQr"
+                        .parse()
+                        .unwrap(),
+                }
+            )
+        ]
     );
     assert_eq!(
         *indexer
             .handler
             .balance_change_swaps
             .get(
-                &"kxf05k08ps1ol3zgcwvmkam_dragon.dragon_bot.near"
+                &"sneering_enigma.user.intear.near"
                     .parse::<AccountId>()
                     .unwrap()
             )
@@ -367,33 +497,76 @@ async fn detects_ref_dragonbot_trades() {
         vec![(
             BalanceChangeSwap {
                 balance_changes: HashMap::from_iter([
-                    ("wrap.near".parse().unwrap(), 9466638646302120499119272),
+                    ("wrap.near".parse().unwrap(), -10000000000000000000000),
                     (
-                        "meek.tkn.near".parse().unwrap(),
-                        -478481220062017777819333235161697
+                        "jambo-1679.meme-cooking.near".parse().unwrap(),
+                        8407891083104184721
                     )
                 ]),
-                pool_swaps: vec![RawPoolSwap {
-                    pool: "REF-5059".to_owned(),
-                    token_in: "meek.tkn.near".parse().unwrap(),
-                    token_out: "wrap.near".parse().unwrap(),
-                    amount_in: 478481220062017777819333235161697,
-                    amount_out: 9466638646302120499119272
-                }]
+                pool_swaps: vec![
+                    RawPoolSwap {
+                        pool: "REF-5720".to_owned(),
+                        token_in: "wrap.near".parse().unwrap(),
+                        token_out: "abg-966.meme-cooking.near".parse().unwrap(),
+                        amount_in: 6000000000000000000000,
+                        amount_out: 193501745035556127133
+                    },
+                    RawPoolSwap {
+                        pool: "REF-5789".to_owned(),
+                        token_in: "abg-966.meme-cooking.near".parse().unwrap(),
+                        token_out: "bullish-1254.meme-cooking.near".parse().unwrap(),
+                        amount_in: 193501745035556127133,
+                        amount_out: 9544440457365313592258
+                    },
+                    RawPoolSwap {
+                        pool: "REF-5846".to_owned(),
+                        token_in: "bullish-1254.meme-cooking.near".parse().unwrap(),
+                        token_out: "noear-324.meme-cooking.near".parse().unwrap(),
+                        amount_in: 9544440457365313592258,
+                        amount_out: 2363249266849562417601
+                    },
+                    RawPoolSwap {
+                        pool: "REF-6558".to_owned(),
+                        token_in: "noear-324.meme-cooking.near".parse().unwrap(),
+                        token_out: "jambo-1679.meme-cooking.near".parse().unwrap(),
+                        amount_in: 2363249266849562417601,
+                        amount_out: 5039386076374332885
+                    },
+                    RawPoolSwap {
+                        pool: "REF-6594".to_owned(),
+                        token_in: "wrap.near".parse().unwrap(),
+                        token_out: "zolanear-1726.meme-cooking.near".parse().unwrap(),
+                        amount_in: 4000000000000000000000,
+                        amount_out: 276893747748111517610
+                    },
+                    RawPoolSwap {
+                        pool: "REF-6604".to_owned(),
+                        token_in: "zolanear-1726.meme-cooking.near".parse().unwrap(),
+                        token_out: "gp.token0.near".parse().unwrap(),
+                        amount_in: 276893747748111517610,
+                        amount_out: 3552779985208586898576
+                    },
+                    RawPoolSwap {
+                        pool: "REF-6520".to_owned(),
+                        token_in: "gp.token0.near".parse().unwrap(),
+                        token_out: "jambo-1679.meme-cooking.near".parse().unwrap(),
+                        amount_in: 3552779985208586898576,
+                        amount_out: 3368505006729851836
+                    }
+                ]
             },
             TradeContext {
-                trader: "kxf05k08ps1ol3zgcwvmkam_dragon.dragon_bot.near"
+                trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                block_height: 176281539,
+                block_timestamp_nanosec: 1765398816755525308,
+                transaction_id: "DZ6cW9R9fErbuHAvEJ5ePQ5bXCqJCVHxHRR2FmLox2qg"
                     .parse()
                     .unwrap(),
-                block_height: 118209236,
-                block_timestamp_nanosec: 1714803352814919506,
-                transaction_id: "C4pr5yYyxviWQkt4K7uVFaH14LWR43gcKpj1GDiV4nc8"
+                receipt_id: "2m5w3t654ku8m4e1PJbUYg2agRWX2A2827NBMsTfUEQr"
                     .parse()
                     .unwrap(),
-                receipt_id: "4xmgsfQ6YypjKC2hxts11YBuRNYjaavShtrpRAWxFHNu"
-                    .parse()
-                    .unwrap(),
-            }
+            },
+            Some("dex-aggregator.intear.near".to_string())
         )]
     );
 }
@@ -591,7 +764,8 @@ async fn detects_ref_arbitrage_trades() {
                 receipt_id: "FGYgTGuWkJD6W7wFXmFkP95rxdGbmxPWbNLTttFEwUam"
                     .parse()
                     .unwrap(),
-            }
+            },
+            None
         )]
     );
 }
@@ -818,7 +992,8 @@ async fn detects_delegate_ref_trades() {
                 receipt_id: "2rb7u5GeRdDLnyM9ggKg4RMBge3UMCbuwk5Gr9fC5jon"
                     .parse()
                     .unwrap(),
-            }
+            },
+            None
         )]
     );
 }
@@ -996,7 +1171,8 @@ async fn detects_ref_hot_tg_trades() {
                 receipt_id: "4wVWyZd2k1vbSQCw4HzvvKVqrgsUYRiEoiRDQUtYX5Yu"
                     .parse()
                     .unwrap()
-            }
+            },
+            Some("owner.herewallet.near".to_string())
         )]
     );
 }
@@ -1185,7 +1361,8 @@ async fn detects_ref_swap_by_output() {
                 receipt_id: "AeUZ7w79WAFjoJkAKogWWU8HSPo9rwjY6yhyjumM7Md5"
                     .parse()
                     .unwrap(),
-            }
+            },
+            None
         )]
     );
 }
@@ -1286,7 +1463,8 @@ async fn detects_ref_swap_by_output_transfer() {
                 receipt_id: "8hPEQfwhxU1zt1grxiLHysTb5fwk6VJMEC17cnA5oLRZ"
                     .parse()
                     .unwrap(),
-            }
+            },
+            None
         )]
     );
 }
@@ -1307,8 +1485,8 @@ async fn detects_aidols_buy() {
                 postfetch_blocks: 0,
             }),
             ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 137406119,
-                end_exclusive: Some(137406124),
+                start_inclusive: 176287820,
+                end_exclusive: Some(176287830),
             })
         },
     )
@@ -1319,24 +1497,28 @@ async fn detects_aidols_buy() {
         *indexer
             .handler
             .pool_swaps
-            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .get(
+                &"sneering_enigma.user.intear.near"
+                    .parse::<AccountId>()
+                    .unwrap()
+            )
             .unwrap(),
         vec![(
             RawPoolSwap {
-                pool: "AIDOLS-ponkeai.aidols.near".to_owned(),
+                pool: "AIDOLS-mcg.aidols.near".to_owned(),
                 token_in: "wrap.near".parse().unwrap(),
-                token_out: "ponkeai.aidols.near".parse().unwrap(),
-                amount_in: 300000000000000000000000,
-                amount_out: 399840063974410235905637744903
+                token_out: "mcg.aidols.near".parse().unwrap(),
+                amount_in: 100000000000000000000000,
+                amount_out: 106755019637392545617767462252
             },
             TradeContext {
-                trader: "slimedragon.near".parse().unwrap(),
-                block_height: 137406122,
-                block_timestamp_nanosec: 1736934912940183334,
-                transaction_id: "6xNcuGFB3Qs5hmDkavireqsxaENLGeJVw5St8PeXYnDz"
+                trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                block_height: 176287824,
+                block_timestamp_nanosec: 1765402765744313660,
+                transaction_id: "GNsR3C6sbmzgs63btT2WRjpWAenjXcE1W3jkWTSPCdQw"
                     .parse()
                     .unwrap(),
-                receipt_id: "3KiybrbFAbDMxcTYDmZpjBrQX7pKLGoMreoHpLa6kEWs"
+                receipt_id: "FPWA9xYsTCGDaBMaw3X43JUs6Fipn5iqEtngnprNpMkq"
                     .parse()
                     .unwrap(),
             }
@@ -1346,36 +1528,41 @@ async fn detects_aidols_buy() {
         *indexer
             .handler
             .balance_change_swaps
-            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .get(
+                &"sneering_enigma.user.intear.near"
+                    .parse::<AccountId>()
+                    .unwrap()
+            )
             .unwrap(),
         vec![(
             BalanceChangeSwap {
                 balance_changes: HashMap::from_iter([
-                    ("wrap.near".parse().unwrap(), -300000000000000000000000),
+                    ("wrap.near".parse().unwrap(), -100000000000000000000000),
                     (
-                        "ponkeai.aidols.near".parse().unwrap(),
-                        399840063974410235905637744903,
+                        "mcg.aidols.near".parse().unwrap(),
+                        106755019637392545617767462252,
                     )
                 ]),
                 pool_swaps: vec![RawPoolSwap {
-                    pool: "AIDOLS-ponkeai.aidols.near".to_owned(),
+                    pool: "AIDOLS-mcg.aidols.near".to_owned(),
                     token_in: "wrap.near".parse().unwrap(),
-                    token_out: "ponkeai.aidols.near".parse().unwrap(),
-                    amount_in: 300000000000000000000000,
-                    amount_out: 399840063974410235905637744903
+                    token_out: "mcg.aidols.near".parse().unwrap(),
+                    amount_in: 100000000000000000000000,
+                    amount_out: 106755019637392545617767462252
                 }]
             },
             TradeContext {
-                trader: "slimedragon.near".parse().unwrap(),
-                block_height: 137406122,
-                block_timestamp_nanosec: 1736934912940183334,
-                transaction_id: "6xNcuGFB3Qs5hmDkavireqsxaENLGeJVw5St8PeXYnDz"
+                trader: "sneering_enigma.user.intear.near".parse().unwrap(),
+                block_height: 176287824,
+                block_timestamp_nanosec: 1765402765744313660,
+                transaction_id: "GNsR3C6sbmzgs63btT2WRjpWAenjXcE1W3jkWTSPCdQw"
                     .parse()
                     .unwrap(),
-                receipt_id: "3KiybrbFAbDMxcTYDmZpjBrQX7pKLGoMreoHpLa6kEWs"
+                receipt_id: "FPWA9xYsTCGDaBMaw3X43JUs6Fipn5iqEtngnprNpMkq"
                     .parse()
                     .unwrap(),
-            }
+            },
+            Some("intear.near".to_string())
         )]
     );
 }
@@ -1465,7 +1652,8 @@ async fn detects_aidols_sell() {
                 receipt_id: "C7HHJztaC9ngMqMurUJQbbAb3HwtVJSuKcAjrPMM71yd"
                     .parse()
                     .unwrap(),
-            }
+            },
+            None
         )]
     );
 }
@@ -1587,7 +1775,8 @@ async fn detects_refdcl_trades() {
                 block_timestamp_nanosec: 1743580488884603339,
                 transaction_id: "5SiQzAwvpfu3dBAao3TuaXhwLTFANDQ3GXNryR1aqdFk".parse().unwrap(),
                 receipt_id: "8eznv1M9d33sPDHdUnzTCzduTxujuqG4kmUjU5tWJ3pk".parse().unwrap(),
-            }
+            },
+            None
         )]
     );
 }
