@@ -1,18 +1,20 @@
 use async_trait::async_trait;
 use inindexer::{
-    near_indexer_primitives::types::BlockHeight, neardata_old::OldNeardataProvider, BlockRange,
+    BlockRange, near_indexer_primitives::types::BlockHeight, neardata_old::OldNeardataProvider,
 };
-use intear_events::events::trade::trade_pool_change::AidolsPool;
+use intear_events::events::trade::trade_pool_change::{
+    AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachPool,
+};
 use std::collections::HashMap;
 
 use inindexer::{
-    near_indexer_primitives::types::AccountId, run_indexer, IndexerOptions,
-    PreprocessTransactionsSettings,
+    IndexerOptions, PreprocessTransactionsSettings, near_indexer_primitives::types::AccountId,
+    run_indexer,
 };
 
 use crate::{
-    ref_finance_state, BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap,
-    TradeContext, TradeEventHandler, TradeIndexer,
+    BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap, TradeContext,
+    TradeEventHandler, TradeIndexer, ref_finance_state,
 };
 
 #[derive(Default)]
@@ -1682,21 +1684,23 @@ async fn detects_aidols_state_changes() {
     .await
     .unwrap();
 
-    assert!(indexer.handler.state_changes.contains(&PoolChangeEvent {
-        pool_id: "AIDOLS-tganza.aidols.near".to_owned(),
-        receipt_id: "ErBeAEQyuWyab7ggYrzEZnPBo1sJA4GnJ6PhiCrMnn9y"
-            .parse()
-            .unwrap(),
-        block_timestamp_nanosec: 1736935882233587330,
-        block_height: 137406981,
-        pool: PoolType::Aidols(AidolsPool {
-            token_id: "tganza.aidols.near".parse().unwrap(),
-            token_hold: 1000000000000000000000000000000000,
-            wnear_hold: 500000000000000000000000000,
-            is_deployed: false,
-            is_tradable: true
+    assert!(
+        indexer.handler.state_changes.contains(&PoolChangeEvent {
+            pool_id: "AIDOLS-tganza.aidols.near".to_owned(),
+            receipt_id: "ErBeAEQyuWyab7ggYrzEZnPBo1sJA4GnJ6PhiCrMnn9y"
+                .parse()
+                .unwrap(),
+            block_timestamp_nanosec: 1736935882233587330,
+            block_height: 137406981,
+            pool: PoolType::Aidols(AidolsPool {
+                token_id: "tganza.aidols.near".parse().unwrap(),
+                token_hold: 1000000000000000000000000000000000,
+                wnear_hold: 500000000000000000000000000,
+                is_deployed: false,
+                is_tradable: true
+            })
         })
-    }));
+    );
 }
 
 #[tokio::test]
@@ -1876,5 +1880,146 @@ async fn detects_ref_degen_pool_state_changes() {
                 ))
             }
         ]
+    );
+}
+
+#[tokio::test]
+async fn detects_intear_plach_trades() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        OldNeardataProvider::mainnet(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 183_810_119,
+                end_exclusive: Some(183_810_123),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            RawPoolSwap {
+                pool: "INTEARPLACH-0".to_owned(),
+                token_in: "jambo-1679.meme-cooking.near".parse().unwrap(),
+                token_out: "near".parse().unwrap(),
+                amount_in: 30000000000000000,
+                amount_out: 80128205128205128205
+            },
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 183810122,
+                block_timestamp_nanosec: 1770042352791768939,
+                transaction_id: "FL9mYxVV2Uuo4feSVUN5K1yZu8Y7Rj5j8drsEGFaNZWZ"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "Ax1HV2jKExzV6uLq8spNpJanCnCcSpxLaRxDpZAKpKr4"
+                    .parse()
+                    .unwrap(),
+            }
+        )]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("near".parse().unwrap(), 80128205128205128205),
+                    (
+                        "jambo-1679.meme-cooking.near".parse().unwrap(),
+                        -30000000000000000
+                    )
+                ]),
+                pool_swaps: vec![RawPoolSwap {
+                    pool: "INTEARPLACH-0".to_owned(),
+                    token_in: "jambo-1679.meme-cooking.near".parse().unwrap(),
+                    token_out: "near".parse().unwrap(),
+                    amount_in: 30000000000000000,
+                    amount_out: 80128205128205128205
+                }]
+            },
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 183810122,
+                block_timestamp_nanosec: 1770042352791768939,
+                transaction_id: "FL9mYxVV2Uuo4feSVUN5K1yZu8Y7Rj5j8drsEGFaNZWZ"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "Ax1HV2jKExzV6uLq8spNpJanCnCcSpxLaRxDpZAKpKr4"
+                    .parse()
+                    .unwrap(),
+            },
+            None
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_intear_plach_pool_state_changes() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        OldNeardataProvider::mainnet(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 183_810_119,
+                end_exclusive: Some(183_810_123),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        indexer.handler.state_changes,
+        vec![PoolChangeEvent {
+            pool_id: "INTEARPLACH-0".to_owned(),
+            receipt_id: "Ax1HV2jKExzV6uLq8spNpJanCnCcSpxLaRxDpZAKpKr4"
+                .parse()
+                .unwrap(),
+            block_timestamp_nanosec: 1770042352791768939,
+            block_height: 183810122,
+            pool: PoolType::IntearPlach(IntearPlachPool::Private {
+                assets: (
+                    IntearAssetWithBalance {
+                        asset_id: "nep141:jambo-1679.meme-cooking.near".parse().unwrap(),
+                        balance: 1950000000000000000,
+                    },
+                    IntearAssetWithBalance {
+                        asset_id: "near".parse().unwrap(),
+                        balance: 5128205128205128205130,
+                    },
+                ),
+                fees: IntearPlachFeeConfiguration { receivers: vec![] },
+                owner_id: "slimedragon.near".parse().unwrap(),
+            })
+        }]
     );
 }

@@ -197,6 +197,9 @@ impl TradeEventHandler for PushToRedisStream {
                 PoolType::Aidols(pool) => {
                     intear_events::events::trade::trade_pool_change::PoolType::Aidols(pool)
                 }
+                PoolType::IntearPlach(pool) => {
+                    intear_events::events::trade::trade_pool_change::PoolType::IntearPlach(pool)
+                }
             },
             block_height: event.block_height,
             block_timestamp_nanosec: event.block_timestamp_nanosec,

@@ -2,7 +2,7 @@ use trade_indexer::redis_handler::PushToRedisStream;
 
 use inindexer::neardata::NeardataProvider;
 use inindexer::{
-    run_indexer, AutoContinue, BlockRange, IndexerOptions, PreprocessTransactionsSettings,
+    AutoContinue, BlockRange, IndexerOptions, PreprocessTransactionsSettings, run_indexer,
 };
 use redis::aio::ConnectionManager;
 

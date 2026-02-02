@@ -5,23 +5,26 @@ use async_trait::async_trait;
 use borsh::BorshDeserialize;
 use inindexer::near_utils::FtBalance;
 use inindexer::{
+    IncompleteTransaction, Indexer, TransactionReceipt,
     near_indexer_primitives::{
+        CryptoHash, StreamerMessage,
         types::{AccountId, BlockHeight},
         views::{StateChangeCauseView, StateChangeValueView},
-        CryptoHash, StreamerMessage,
     },
-    IncompleteTransaction, Indexer, TransactionReceipt,
 };
-use intear_events::events::trade::trade_pool_change::AidolsPool;
+use intear_events::events::trade::trade_pool_change::{AidolsPool, IntearPlachPool};
 use ref_trade_detection::REF_CONTRACT_ID;
 use ref_trade_detection::TESTNET_REF_CONTRACT_ID;
 
 mod aidols_state;
 mod aidols_trade_detection;
+mod intear_dex_types;
+mod intear_plach_trade_detection;
 pub mod redis_handler;
 mod ref_finance_state;
 mod ref_trade_detection;
 mod refdcl_trade_detection;
+
 #[cfg(test)]
 mod tests;
 
@@ -103,7 +106,11 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                             &mut value.as_slice(),
                         ) {
                             if pool_id > 420_000 {
-                                log::warn!("Pool ID too high, probably a bug: {pool_id}. If Ref actually has that many pools, increase the number in {}:{} to a reasonable amount", file!(), line!() - 1);
+                                log::warn!(
+                                    "Pool ID too high, probably a bug: {pool_id}. If Ref actually has that many pools, increase the number in {}:{} to a reasonable amount",
+                                    file!(),
+                                    line!() - 1
+                                );
                                 continue;
                             }
 
@@ -205,6 +212,14 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
             self.is_testnet,
         )
         .await;
+        intear_plach_trade_detection::detect(
+            receipt,
+            transaction,
+            block,
+            &mut self.handler,
+            self.is_testnet,
+        )
+        .await;
         Ok(())
     }
 
@@ -251,6 +266,7 @@ pub struct PoolChangeEvent {
 pub enum PoolType {
     Ref(ref_finance_state::Pool),
     Aidols(AidolsPool),
+    IntearPlach(IntearPlachPool),
 }
 
 pub(crate) fn find_parent_receipt<'a>(
@@ -258,15 +274,14 @@ pub(crate) fn find_parent_receipt<'a>(
     receipt: &TransactionReceipt,
 ) -> Option<&'a TransactionReceipt> {
     transaction.receipts.iter().find_map(|r| {
-        if let Some(r) = r.1 {
-            if r.receipt
+        if let Some(r) = r.1
+            && r.receipt
                 .execution_outcome
                 .outcome
                 .receipt_ids
                 .contains(&receipt.receipt.receipt.receipt_id)
-            {
-                return Some(r);
-            }
+        {
+            return Some(r);
         }
         None
     })
