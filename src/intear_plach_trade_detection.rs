@@ -30,6 +30,40 @@ struct PlachPoolUpdatedEvent {
     pool: IntearPlachPool,
 }
 
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+struct PlachLiquidityAddedEvent {
+    pool_id: u32,
+    asset_0: AssetId,
+    asset_1: AssetId,
+    added_amount_0: U128,
+    added_amount_1: U128,
+    minted_shares: U128,
+    new_owned_asset_0: U128,
+    new_owned_asset_1: U128,
+    new_owned_shares: U128,
+    new_total_asset_0: U128,
+    new_total_asset_1: U128,
+    new_total_shares: U128,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+struct PlachLiquidityRemovedEvent {
+    pool_id: u32,
+    asset_0: AssetId,
+    asset_1: AssetId,
+    removed_amount_0: U128,
+    removed_amount_1: U128,
+    burned_shares: U128,
+    new_owned_asset_0: U128,
+    new_owned_asset_1: U128,
+    new_owned_shares: U128,
+    new_total_asset_0: U128,
+    new_total_asset_1: U128,
+    new_total_shares: U128,
+}
+
 pub async fn detect(
     receipt: &TransactionReceipt,
     transaction: &IncompleteTransaction,
@@ -81,19 +115,27 @@ pub async fn detect(
                         },
                     )
                     .await;
+                let Ok(amount_in_i128) = i128::try_from(event.data.event.data.amount_in.0) else {
+                    log::warn!(
+                        "Amount in overflow in swap event: {}",
+                        event.data.event.data.amount_in.0
+                    );
+                    continue;
+                };
+                let Ok(amount_out_i128) = i128::try_from(event.data.event.data.amount_out.0) else {
+                    log::warn!(
+                        "Amount out overflow in swap event: {}",
+                        event.data.event.data.amount_out.0
+                    );
+                    continue;
+                };
                 handler
                     .on_balance_change_swap(
                         context,
                         BalanceChangeSwap {
                             balance_changes: HashMap::from_iter([
-                                (
-                                    asset_in.clone(),
-                                    -(event.data.event.data.amount_in.0 as i128),
-                                ),
-                                (
-                                    asset_out.clone(),
-                                    event.data.event.data.amount_out.0 as i128,
-                                ),
+                                (asset_in.clone(), -amount_in_i128),
+                                (asset_out.clone(), amount_out_i128),
                             ]),
                             pool_swaps: vec![RawPoolSwap {
                                 pool: create_plach_pool_id(event.data.event.data.pool_id),
@@ -122,6 +164,118 @@ pub async fn detect(
                         block_height: block.block.header.height,
                         pool: PoolType::IntearPlach(event.data.event.data.pool),
                     })
+                    .await;
+            }
+
+            if let Ok(event) = EventLogData::<DexEvent<PlachLiquidityAddedEvent>>::deserialize(log)
+                && event.event == "dex_event"
+                && event.standard == "inteardex"
+                && event.data.event.event == "liquidity_added"
+                && event.data.dex_id == PLACH_DEX_ID.parse().unwrap()
+                && let Some(user) = event.data.user
+            {
+                let asset_0 = match event.data.event.data.asset_0 {
+                    AssetId::Nep141(id) => id,
+                    AssetId::Nep245(_, _) => continue,
+                    AssetId::Nep171(_, _) => continue,
+                    AssetId::Near => "near".parse().unwrap(),
+                };
+                let asset_1 = match event.data.event.data.asset_1 {
+                    AssetId::Nep141(id) => id,
+                    AssetId::Nep245(_, _) => continue,
+                    AssetId::Nep171(_, _) => continue,
+                    AssetId::Near => "near".parse().unwrap(),
+                };
+
+                let context = TradeContext {
+                    trader: user.clone(),
+                    block_height: block.block.header.height,
+                    block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
+                    transaction_id: transaction.transaction.transaction.hash,
+                    receipt_id: receipt.receipt.receipt.receipt_id,
+                };
+
+                let Ok(added_amount_0) = i128::try_from(event.data.event.data.added_amount_0.0)
+                else {
+                    log::warn!(
+                        "Amount overflow in liquidity_added event: {}",
+                        event.data.event.data.added_amount_0.0
+                    );
+                    continue;
+                };
+                let Ok(added_amount_1) = i128::try_from(event.data.event.data.added_amount_1.0)
+                else {
+                    log::warn!(
+                        "Amount overflow in liquidity_added event: {}",
+                        event.data.event.data.added_amount_1.0
+                    );
+                    continue;
+                };
+
+                handler
+                    .on_liquidity_pool(
+                        context,
+                        create_plach_pool_id(event.data.event.data.pool_id),
+                        HashMap::from_iter([(asset_0, added_amount_0), (asset_1, added_amount_1)]),
+                    )
+                    .await;
+            }
+
+            if let Ok(event) =
+                EventLogData::<DexEvent<PlachLiquidityRemovedEvent>>::deserialize(log)
+                && event.event == "dex_event"
+                && event.standard == "inteardex"
+                && event.data.event.event == "liquidity_removed"
+                && event.data.dex_id == PLACH_DEX_ID.parse().unwrap()
+                && let Some(user) = event.data.user
+            {
+                let asset_0 = match event.data.event.data.asset_0 {
+                    AssetId::Nep141(id) => id,
+                    AssetId::Nep245(_, _) => continue,
+                    AssetId::Nep171(_, _) => continue,
+                    AssetId::Near => "near".parse().unwrap(),
+                };
+                let asset_1 = match event.data.event.data.asset_1 {
+                    AssetId::Nep141(id) => id,
+                    AssetId::Nep245(_, _) => continue,
+                    AssetId::Nep171(_, _) => continue,
+                    AssetId::Near => "near".parse().unwrap(),
+                };
+
+                let context = TradeContext {
+                    trader: user.clone(),
+                    block_height: block.block.header.height,
+                    block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
+                    transaction_id: transaction.transaction.transaction.hash,
+                    receipt_id: receipt.receipt.receipt.receipt_id,
+                };
+
+                let Ok(removed_amount_0) = i128::try_from(event.data.event.data.removed_amount_0.0)
+                else {
+                    log::warn!(
+                        "Amount overflow in liquidity_removed event: {}",
+                        event.data.event.data.removed_amount_0.0
+                    );
+                    continue;
+                };
+                let Ok(removed_amount_1) = i128::try_from(event.data.event.data.removed_amount_1.0)
+                else {
+                    log::warn!(
+                        "Amount overflow in liquidity_removed event: {}",
+                        event.data.event.data.removed_amount_1.0
+                    );
+                    continue;
+                };
+
+                handler
+                    .on_liquidity_pool(
+                        context,
+                        create_plach_pool_id(event.data.event.data.pool_id),
+                        HashMap::from_iter([
+                            (asset_0, -removed_amount_0),
+                            (asset_1, -removed_amount_1),
+                        ]),
+                    )
                     .await;
             }
         }

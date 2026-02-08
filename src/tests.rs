@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use inindexer::{
-    BlockRange, near_indexer_primitives::types::BlockHeight, neardata_old::OldNeardataProvider,
+    BlockRange, near_indexer_primitives::types::BlockHeight, neardata::NeardataProvider,
 };
 use intear_events::events::trade::trade_pool_change::{
     AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachPool,
@@ -24,6 +24,14 @@ struct TestHandler {
         HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext, Option<String>)>>,
     state_changes: Vec<PoolChangeEvent>,
     liquidity_pool_events: Vec<(TradeContext, PoolId, HashMap<AccountId, i128>)>,
+}
+
+fn provider() -> NeardataProvider {
+    let mut provider = NeardataProvider::mainnet();
+    if let Ok(token) = std::env::var("FASTNEAR_API_KEY") {
+        provider = provider.with_auth_bearer_token(token);
+    }
+    provider
 }
 
 #[async_trait]
@@ -74,7 +82,7 @@ async fn detects_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -170,7 +178,7 @@ async fn detects_ref_multistep_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -318,7 +326,7 @@ async fn detects_ref_tearbot_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -582,7 +590,7 @@ async fn detects_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -781,7 +789,7 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -821,7 +829,7 @@ async fn doesnt_detect_failed_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -861,7 +869,7 @@ async fn detects_delegate_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1009,7 +1017,7 @@ async fn detects_ref_state_changes() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1070,7 +1078,7 @@ async fn detects_ref_hot_tg_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1188,7 +1196,7 @@ async fn detects_ref_liquidity_add() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1238,7 +1246,7 @@ async fn detects_ref_liquidity_remove() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1288,7 +1296,7 @@ async fn detects_ref_swap_by_output() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1378,7 +1386,7 @@ async fn detects_ref_swap_by_output_transfer() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1480,7 +1488,7 @@ async fn detects_aidols_buy() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1578,7 +1586,7 @@ async fn detects_aidols_sell() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1669,7 +1677,7 @@ async fn detects_aidols_state_changes() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1712,7 +1720,7 @@ async fn detects_refdcl_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1794,7 +1802,7 @@ async fn detects_ref_degen_pool_state_changes() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1892,7 +1900,7 @@ async fn detects_intear_plach_trades() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -1982,7 +1990,7 @@ async fn detects_intear_plach_pool_state_changes() {
 
     run_indexer(
         &mut indexer,
-        OldNeardataProvider::mainnet(),
+        provider(),
         IndexerOptions {
             preprocess_transactions: Some(PreprocessTransactionsSettings {
                 prefetch_blocks: 0,
@@ -2021,5 +2029,85 @@ async fn detects_intear_plach_pool_state_changes() {
                 owner_id: "slimedragon.near".parse().unwrap(),
             })
         }]
+    );
+}
+
+#[tokio::test]
+async fn detects_intear_plach_liquidity_add() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 184_680_178,
+                end_exclusive: Some(184_680_182),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(indexer.handler.liquidity_pool_events.len(), 1);
+    let (context, pool_id, tokens) = &indexer.handler.liquidity_pool_events[0];
+    assert_eq!(
+        context.trader,
+        "slimedragon.near".parse::<AccountId>().unwrap()
+    );
+    assert_eq!(pool_id, "INTEARPLACH-2");
+    assert_eq!(
+        tokens,
+        &HashMap::from_iter([
+            ("near".parse().unwrap(), 500000000000000000000),
+            ("wrap.near".parse().unwrap(), 500000000000000000000),
+        ])
+    );
+}
+
+#[tokio::test]
+async fn detects_intear_plach_liquidity_remove() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 184_680_720,
+                end_exclusive: Some(184_680_724),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(indexer.handler.liquidity_pool_events.len(), 1);
+    let (context, pool_id, tokens) = &indexer.handler.liquidity_pool_events[0];
+    assert_eq!(
+        context.trader,
+        "slimedragon.near".parse::<AccountId>().unwrap()
+    );
+    assert_eq!(pool_id, "INTEARPLACH-2");
+    assert_eq!(
+        tokens,
+        &HashMap::from_iter([
+            ("near".parse().unwrap(), -5000500000000000000000000),
+            ("wrap.near".parse().unwrap(), -5000500000000000000000000),
+        ])
     );
 }

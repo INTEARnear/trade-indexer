@@ -22,3 +22,5 @@ jobs:
       run: cargo clippy --verbose -- --deny clippy::all
     - name: Run tests
       run: cargo test --verbose
+      env:
+        FASTNEAR_API_KEY: ${{ secrets.FASTNEAR_API_KEY }}

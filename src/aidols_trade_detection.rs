@@ -71,13 +71,24 @@ pub async fn detect(
                             },
                         )
                         .await;
+                    let Ok(input_amount_i128) = i128::try_from(swap.input_amount) else {
+                        log::warn!("Input amount overflow in swap event: {}", swap.input_amount);
+                        continue;
+                    };
+                    let Ok(output_amount_i128) = i128::try_from(swap.output_amount) else {
+                        log::warn!(
+                            "Output amount overflow in swap event: {}",
+                            swap.output_amount
+                        );
+                        continue;
+                    };
                     handler
                         .on_balance_change_swap(
                             context,
                             BalanceChangeSwap {
                                 balance_changes: HashMap::from_iter([
-                                    (swap.input_token.clone(), -(swap.input_amount as i128)),
-                                    (swap.output_token.clone(), swap.output_amount as i128),
+                                    (swap.input_token.clone(), -input_amount_i128),
+                                    (swap.output_token.clone(), output_amount_i128),
                                 ]),
                                 pool_swaps: vec![RawPoolSwap {
                                     pool: create_aidols_pool_id(&token),

@@ -127,7 +127,14 @@ pub async fn detect(
                                     let Ok(token) = token.parse::<AccountId>() else {
                                         return;
                                     };
-                                    tokens.insert(token, amount as i128);
+                                    let Ok(amount_i128) = i128::try_from(amount) else {
+                                        log::warn!(
+                                            "Amount overflow in add_liquidity event: {}",
+                                            amount
+                                        );
+                                        return;
+                                    };
+                                    tokens.insert(token, amount_i128);
                                 }
                                 handler
                                     .on_liquidity_pool(
@@ -180,7 +187,14 @@ pub async fn detect(
                                 let Ok(token) = token.parse::<AccountId>() else {
                                     return;
                                 };
-                                amounts.insert(token, -(amount as i128));
+                                let Ok(amount_i128) = i128::try_from(amount) else {
+                                    log::warn!(
+                                        "Amount overflow in remove_liquidity event: {}",
+                                        amount
+                                    );
+                                    return;
+                                };
+                                amounts.insert(token, -amount_i128);
                             }
                             handler
                                 .on_liquidity_pool(
@@ -253,8 +267,16 @@ pub async fn detect(
                         amount_out,
                         token_out
                     );
-                    *balance_changes.entry(token_in.clone()).or_insert(0) -= amount_in as i128;
-                    *balance_changes.entry(token_out.clone()).or_insert(0) += amount_out as i128;
+                    let Ok(amount_in_i128) = i128::try_from(amount_in) else {
+                        log::warn!("Amount in overflow in swap log: {}", amount_in);
+                        continue;
+                    };
+                    let Ok(amount_out_i128) = i128::try_from(amount_out) else {
+                        log::warn!("Amount out overflow in swap log: {}", amount_out);
+                        continue;
+                    };
+                    *balance_changes.entry(token_in.clone()).or_insert(0) -= amount_in_i128;
+                    *balance_changes.entry(token_out.clone()).or_insert(0) += amount_out_i128;
                     swap_logs_in_receipt.push(RawPoolSwap {
                         pool: "NONE".to_string(),
                         token_in,
