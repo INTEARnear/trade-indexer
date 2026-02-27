@@ -76,6 +76,11 @@ pub async fn detect(
         return;
     }
     if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == INTEAR_CONTRACT_ID {
+        let mut merged_pool_swaps = Vec::new();
+        let mut merged_balance_changes = HashMap::new();
+        let mut merged_context = None;
+        let mut merged_referrer = None;
+
         for log in &receipt.receipt.execution_outcome.outcome.logs {
             if let Ok(event) = EventLogData::<DexEvent<PlachSwapEvent>>::deserialize(log)
                 && event.event == "dex_event"
@@ -103,17 +108,19 @@ pub async fn detect(
                     transaction_id: transaction.transaction.transaction.hash,
                     receipt_id: receipt.receipt.receipt.receipt_id,
                 };
+                if merged_context.is_none() {
+                    merged_context = Some(context.clone());
+                }
+                merged_referrer = merged_referrer.or(event.data.referrer.map(|id| id.to_string()));
+                let raw_pool_swap = RawPoolSwap {
+                    pool: create_plach_pool_id(event.data.event.data.pool_id),
+                    token_in: asset_in.clone(),
+                    token_out: asset_out.clone(),
+                    amount_in: event.data.event.data.amount_in.0,
+                    amount_out: event.data.event.data.amount_out.0,
+                };
                 handler
-                    .on_raw_pool_swap(
-                        context.clone(),
-                        RawPoolSwap {
-                            pool: create_plach_pool_id(event.data.event.data.pool_id),
-                            token_in: asset_in.clone(),
-                            token_out: asset_out.clone(),
-                            amount_in: event.data.event.data.amount_in.0,
-                            amount_out: event.data.event.data.amount_out.0,
-                        },
-                    )
+                    .on_raw_pool_swap(context.clone(), raw_pool_swap.clone())
                     .await;
                 let Ok(amount_in_i128) = i128::try_from(event.data.event.data.amount_in.0) else {
                     log::warn!(
@@ -129,25 +136,9 @@ pub async fn detect(
                     );
                     continue;
                 };
-                handler
-                    .on_balance_change_swap(
-                        context,
-                        BalanceChangeSwap {
-                            balance_changes: HashMap::from_iter([
-                                (asset_in.clone(), -amount_in_i128),
-                                (asset_out.clone(), amount_out_i128),
-                            ]),
-                            pool_swaps: vec![RawPoolSwap {
-                                pool: create_plach_pool_id(event.data.event.data.pool_id),
-                                token_in: asset_in.clone(),
-                                token_out: asset_out.clone(),
-                                amount_in: event.data.event.data.amount_in.0,
-                                amount_out: event.data.event.data.amount_out.0,
-                            }],
-                        },
-                        event.data.referrer.map(|id| id.to_string()),
-                    )
-                    .await;
+                *merged_balance_changes.entry(asset_in).or_insert(0) -= amount_in_i128;
+                *merged_balance_changes.entry(asset_out).or_insert(0) += amount_out_i128;
+                merged_pool_swaps.push(raw_pool_swap);
             }
 
             if let Ok(event) = EventLogData::<DexEvent<PlachPoolUpdatedEvent>>::deserialize(log)
@@ -275,6 +266,23 @@ pub async fn detect(
                             (asset_0, -removed_amount_0),
                             (asset_1, -removed_amount_1),
                         ]),
+                    )
+                    .await;
+            }
+        }
+        if let Some(context) = merged_context
+            && !merged_pool_swaps.is_empty()
+        {
+            merged_balance_changes.retain(|_, value| *value != 0);
+            if !merged_balance_changes.is_empty() {
+                handler
+                    .on_balance_change_swap(
+                        context,
+                        BalanceChangeSwap {
+                            balance_changes: merged_balance_changes,
+                            pool_swaps: merged_pool_swaps,
+                        },
+                        merged_referrer,
                     )
                     .await;
             }
