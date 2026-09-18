@@ -47,8 +47,8 @@ pub async fn detect(
                     if method_name == "ft_on_transfer" {
                         if let Some(caller_receipt) = transaction
                             .receipts
-                            .iter()
-                            .filter_map(|(_, r)| r.as_ref())
+                            .values()
+                            .filter_map(|r| r.as_ref())
                             .find(|r| {
                                 r.receipt
                                     .execution_outcome
@@ -242,6 +242,26 @@ pub async fn detect(
                 );
                 return;
             }
+        }
+
+        if trader == "aggregatedex.near" {
+            let mut last_transfer_call = receipt;
+            let mut last_parent = receipt;
+            while let Some(parent) = find_parent_receipt(transaction, last_parent) {
+                last_parent = parent;
+                if let ReceiptEnumView::Action { actions, .. } = &parent.receipt.receipt.receipt
+                    && actions.iter().any(|a| {
+                        matches!(
+                            a,
+                            ActionView::FunctionCall { method_name, .. }
+                                if method_name == "ft_transfer_call"
+                        )
+                    })
+                {
+                    last_transfer_call = parent;
+                }
+            }
+            trader = last_transfer_call.receipt.receipt.predecessor_id.clone();
         }
 
         for log in &receipt.receipt.execution_outcome.outcome.logs {

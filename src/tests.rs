@@ -2111,3 +2111,159 @@ async fn detects_intear_plach_liquidity_remove() {
         ])
     );
 }
+
+#[tokio::test]
+async fn detects_aggregatedex_trades() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 216_110_630,
+                end_exclusive: Some(216_110_660),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"t-rexcoochie.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![
+            (
+                RawPoolSwap {
+                    pool: "REFDCL-17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1|wrap.near|100".to_owned(),
+                    token_in: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                        .parse()
+                        .unwrap(),
+                    token_out: "wrap.near".parse().unwrap(),
+                    amount_in: 499500000,
+                    amount_out: 166180759515527998936891466
+                },
+                TradeContext {
+                    trader: "t-rexcoochie.near".parse().unwrap(),
+                    block_height: 216110641,
+                    block_timestamp_nanosec: 1789679462136421800,
+                    transaction_id: "5KdukJTMimkGLXFDQuKp71HDyfD1Bky1NBBcpQbh3NSN"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "5Q6MGzwQDNkbYqRAiAPNbr74kQ9LwNbqhzEZMttfqT84"
+                        .parse()
+                        .unwrap()
+                }
+            ),
+            (
+                RawPoolSwap {
+                    pool: "REF-4314".to_owned(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "token.lonkingnearbackto2024.near".parse().unwrap(),
+                    amount_in: 166180759515527998936891466,
+                    amount_out: 318958630231220771
+                },
+                TradeContext {
+                    trader: "t-rexcoochie.near".parse().unwrap(),
+                    block_height: 216110645,
+                    block_timestamp_nanosec: 1789679464256700728,
+                    transaction_id: "5KdukJTMimkGLXFDQuKp71HDyfD1Bky1NBBcpQbh3NSN"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "FE6ZudQ9cQxGLffUiHdtkfQJgGhKepGNWBRZabUNxKyr"
+                        .parse()
+                        .unwrap()
+                }
+            )
+        ]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"t-rexcoochie.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![
+            (
+                BalanceChangeSwap {
+                    balance_changes: HashMap::from_iter([
+                        (
+                            "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                                .parse()
+                                .unwrap(),
+                            -499500000,
+                        ),
+                        (
+                            "wrap.near".parse().unwrap(),
+                            166180759515527998936891466,
+                        ),
+                    ]),
+                    pool_swaps: vec![RawPoolSwap {
+                        pool: "REFDCL-17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1|wrap.near|100".to_owned(),
+                        token_in: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                            .parse()
+                            .unwrap(),
+                        token_out: "wrap.near".parse().unwrap(),
+                        amount_in: 499500000,
+                        amount_out: 166180759515527998936891466,
+                    }],
+                },
+                TradeContext {
+                    trader: "t-rexcoochie.near".parse().unwrap(),
+                    block_height: 216110641,
+                    block_timestamp_nanosec: 1789679462136421800,
+                    transaction_id: "5KdukJTMimkGLXFDQuKp71HDyfD1Bky1NBBcpQbh3NSN"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "5Q6MGzwQDNkbYqRAiAPNbr74kQ9LwNbqhzEZMttfqT84"
+                        .parse()
+                        .unwrap(),
+                },
+                None,
+            ),
+            (
+                BalanceChangeSwap {
+                    balance_changes: HashMap::from_iter([
+                        (
+                            "wrap.near".parse().unwrap(),
+                            -166180759515527998936891466,
+                        ),
+                        (
+                            "token.lonkingnearbackto2024.near".parse().unwrap(),
+                            318958630231220771,
+                        ),
+                    ]),
+                    pool_swaps: vec![RawPoolSwap {
+                        pool: "REF-4314".to_owned(),
+                        token_in: "wrap.near".parse().unwrap(),
+                        token_out: "token.lonkingnearbackto2024.near".parse().unwrap(),
+                        amount_in: 166180759515527998936891466,
+                        amount_out: 318958630231220771,
+                    }],
+                },
+                TradeContext {
+                    trader: "t-rexcoochie.near".parse().unwrap(),
+                    block_height: 216110645,
+                    block_timestamp_nanosec: 1789679464256700728,
+                    transaction_id: "5KdukJTMimkGLXFDQuKp71HDyfD1Bky1NBBcpQbh3NSN"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "FE6ZudQ9cQxGLffUiHdtkfQJgGhKepGNWBRZabUNxKyr"
+                        .parse()
+                        .unwrap(),
+                },
+                Some("onebot.near".to_string()),
+            ),
+        ]
+    );
+}

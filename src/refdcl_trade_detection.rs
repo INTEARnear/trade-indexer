@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use inindexer::near_indexer_primitives::views::{ActionView, ReceiptEnumView};
 use inindexer::near_utils::{EventLogData, FtBalance};
 use inindexer::{
     IncompleteTransaction, TransactionReceipt,
@@ -8,7 +9,9 @@ use inindexer::{
 };
 use serde::Deserialize;
 
-use crate::{BalanceChangeSwap, PoolId, RawPoolSwap, TradeContext, TradeEventHandler};
+use crate::{
+    BalanceChangeSwap, PoolId, RawPoolSwap, TradeContext, TradeEventHandler, find_parent_receipt,
+};
 
 pub const REFDCL_CONTRACT_ID: &str = "dclv2.ref-labs.near";
 
@@ -47,8 +50,29 @@ pub async fn detect(
                 && event.standard == "dcl.ref"
             {
                 for swap in event.data {
+                    let mut trader = swap.swapper;
+                    if trader == "aggregatedex.near" {
+                        let mut last_transfer_call = receipt;
+                        let mut last_parent = receipt;
+                        while let Some(parent) = find_parent_receipt(transaction, last_parent) {
+                            last_parent = parent;
+                            if let ReceiptEnumView::Action { actions, .. } =
+                                &parent.receipt.receipt.receipt
+                                && actions.iter().any(|a| {
+                                    matches!(
+                                        a,
+                                        ActionView::FunctionCall { method_name, .. }
+                                            if method_name == "ft_transfer_call"
+                                    )
+                                })
+                            {
+                                last_transfer_call = parent;
+                            }
+                        }
+                        trader = last_transfer_call.receipt.receipt.predecessor_id.clone();
+                    }
                     let context = TradeContext {
-                        trader: swap.swapper,
+                        trader,
                         block_height: block.block.header.height,
                         block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
                         transaction_id: transaction.transaction.transaction.hash,

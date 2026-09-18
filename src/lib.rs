@@ -16,14 +16,14 @@ use intear_events::events::trade::trade_pool_change::{AidolsPool, IntearPlachPoo
 use ref_trade_detection::REF_CONTRACT_ID;
 use ref_trade_detection::TESTNET_REF_CONTRACT_ID;
 
-mod aidols_state;
-mod aidols_trade_detection;
-mod intear_dex_types;
-mod intear_plach_trade_detection;
+pub mod aidols_state;
+pub mod aidols_trade_detection;
+pub mod intear_dex_types;
+pub mod intear_plach_trade_detection;
 pub mod redis_handler;
-mod ref_finance_state;
-mod ref_trade_detection;
-mod refdcl_trade_detection;
+pub mod ref_finance_state;
+pub mod ref_trade_detection;
+pub mod refdcl_trade_detection;
 
 #[cfg(test)]
 mod tests;
@@ -231,35 +231,35 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TradeContext {
-    trader: AccountId,
-    block_height: BlockHeight,
+    pub trader: AccountId,
+    pub block_height: BlockHeight,
     pub block_timestamp_nanosec: u128,
-    transaction_id: CryptoHash,
-    receipt_id: CryptoHash,
+    pub transaction_id: CryptoHash,
+    pub receipt_id: CryptoHash,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct RawPoolSwap {
-    pool: PoolId,
-    token_in: AccountId,
-    token_out: AccountId,
-    amount_in: FtBalance,
-    amount_out: FtBalance,
+    pub pool: PoolId,
+    pub token_in: AccountId,
+    pub token_out: AccountId,
+    pub amount_in: FtBalance,
+    pub amount_out: FtBalance,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct BalanceChangeSwap {
-    balance_changes: HashMap<AccountId, i128>,
-    pool_swaps: Vec<RawPoolSwap>,
+    pub balance_changes: HashMap<AccountId, i128>,
+    pub pool_swaps: Vec<RawPoolSwap>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct PoolChangeEvent {
-    pool_id: PoolId,
-    receipt_id: CryptoHash,
-    block_timestamp_nanosec: u128,
-    block_height: BlockHeight,
-    pool: PoolType,
+    pub pool_id: PoolId,
+    pub receipt_id: CryptoHash,
+    pub block_timestamp_nanosec: u128,
+    pub block_height: BlockHeight,
+    pub pool: PoolType,
 }
 
 #[derive(Debug, PartialEq)]
