@@ -12,9 +12,10 @@ use inindexer::{
         views::{StateChangeCauseView, StateChangeValueView},
     },
 };
-use intear_events::events::trade::trade_pool_change::{AidolsPool, IntearPlachPool};
+use intear_events::events::trade::trade_pool_change::{AidolsPool, IntearPlachPool, RefDclPool};
 use ref_trade_detection::REF_CONTRACT_ID;
 use ref_trade_detection::TESTNET_REF_CONTRACT_ID;
+use refdcl_trade_detection::REFDCL_CONTRACT_ID;
 
 pub mod aidols_state;
 pub mod aidols_trade_detection;
@@ -23,6 +24,7 @@ pub mod intear_plach_trade_detection;
 pub mod redis_handler;
 pub mod ref_finance_state;
 pub mod ref_trade_detection;
+pub mod refdcl_state;
 pub mod refdcl_trade_detection;
 
 #[cfg(test)]
@@ -175,6 +177,65 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                 })
                                 .await;
                         }
+                    } else if account_id == REFDCL_CONTRACT_ID && !self.is_testnet {
+                        let receipt_id =
+                            if let StateChangeCauseView::ReceiptProcessing { receipt_hash } =
+                                &state_change.cause
+                            {
+                                receipt_hash
+                            } else {
+                                log::warn!(
+                                    "Update not caused by a receipt in block {}",
+                                    block.block.header.height
+                                );
+                                continue;
+                            };
+                        // Pools are an UnorderedMap with prefix 0x01, its values are stored at
+                        // 0x01 'v' ++ u64 index
+                        let key = key.as_slice();
+                        if key.len() != 10 || !key.starts_with(&[0x01, b'v']) {
+                            continue;
+                        }
+                        let Ok(pool) =
+                            <refdcl_state::RefDclPoolPrefix as BorshDeserialize>::deserialize(
+                                &mut value.as_slice(),
+                            )
+                        else {
+                            log::warn!("Invalid DCL pool record: {:02x?}", key);
+                            continue;
+                        };
+                        if pool.version != 0 {
+                            log::warn!("Unknown DCL pool record version: {}", pool.version);
+                            continue;
+                        }
+                        let (Ok(token_x), Ok(token_y)) = (
+                            pool.token_x.parse::<AccountId>(),
+                            pool.token_y.parse::<AccountId>(),
+                        ) else {
+                            log::warn!("Invalid DCL pool tokens: {}", pool.pool_id);
+                            continue;
+                        };
+                        log::debug!("Pool changed: {}", pool.pool_id);
+                        self.handler
+                            .on_pool_change(PoolChangeEvent {
+                                pool_id: refdcl_trade_detection::create_refdcl_pool_id(
+                                    &pool.pool_id,
+                                ),
+                                receipt_id: *receipt_id,
+                                block_timestamp_nanosec: block.block.header.timestamp_nanosec
+                                    as u128,
+                                block_height: block.block.header.height,
+                                pool: PoolType::RefDcl(RefDclPool {
+                                    token_x,
+                                    token_y,
+                                    fee: pool.fee,
+                                    point_delta: pool.point_delta,
+                                    current_point: pool.current_point,
+                                    liquidity: pool.liquidity,
+                                    liquidity_x: pool.liquidity_x,
+                                }),
+                            })
+                            .await;
                     }
                 }
             }
@@ -267,6 +328,7 @@ pub enum PoolType {
     Ref(ref_finance_state::Pool),
     Aidols(AidolsPool),
     IntearPlach(IntearPlachPool),
+    RefDcl(RefDclPool),
 }
 
 pub(crate) fn find_parent_receipt<'a>(

@@ -3,7 +3,7 @@ use inindexer::{
     BlockRange, near_indexer_primitives::types::BlockHeight, neardata::NeardataProvider,
 };
 use intear_events::events::trade::trade_pool_change::{
-    AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachPool,
+    AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachPool, RefDclPool,
 };
 use std::collections::HashMap;
 
@@ -1791,6 +1791,189 @@ async fn detects_refdcl_trades() {
             None
         )]
     );
+}
+
+#[tokio::test]
+async fn detects_refdcl_swap_by_output_trades() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 217_682_326,
+                end_exclusive: Some(217_682_332),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    let context = TradeContext {
+        trader: "2fe87f7a462303c66fcd1f003a2e7cb3792044360c0becc203dbf719a6f20ba4"
+            .parse()
+            .unwrap(),
+        block_height: 217682328,
+        block_timestamp_nanosec: 1790628463557084872,
+        transaction_id: "GdgbgsYejmbbcdtHGVoUHK8VJDwjS9vJg4e1BDYB4TA"
+            .parse()
+            .unwrap(),
+        receipt_id: "CrMDvQJv2GA22NqZq4Sat7RmVGrcyrNKDZmAs6WgMUqZ"
+            .parse()
+            .unwrap(),
+    };
+    let usdc_to_rhea = RawPoolSwap {
+        pool: "REFDCL-17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1|token.rhealab.near|100".to_owned(),
+        token_in: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1".parse().unwrap(),
+        token_out: "token.rhealab.near".parse().unwrap(),
+        amount_in: 649513,
+        amount_out: 5000000000001757531,
+    };
+    let wnear_to_usdc = RawPoolSwap {
+        pool:
+            "REFDCL-17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1|wrap.near|100"
+                .to_owned(),
+        token_in: "wrap.near".parse().unwrap(),
+        token_out: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+            .parse()
+            .unwrap(),
+        amount_in: 135259796188882904388200,
+        amount_out: 649513,
+    };
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(
+                &"2fe87f7a462303c66fcd1f003a2e7cb3792044360c0becc203dbf719a6f20ba4"
+                    .parse::<AccountId>()
+                    .unwrap()
+            )
+            .unwrap(),
+        vec![
+            (usdc_to_rhea.clone(), context.clone()),
+            (wnear_to_usdc.clone(), context.clone()),
+        ]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(
+                &"2fe87f7a462303c66fcd1f003a2e7cb3792044360c0becc203dbf719a6f20ba4"
+                    .parse::<AccountId>()
+                    .unwrap()
+            )
+            .unwrap(),
+        vec![
+            (
+                BalanceChangeSwap {
+                    balance_changes: HashMap::from_iter([
+                        (
+                            "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                                .parse()
+                                .unwrap(),
+                            -649513
+                        ),
+                        ("token.rhealab.near".parse().unwrap(), 5000000000001757531),
+                    ]),
+                    pool_swaps: vec![usdc_to_rhea],
+                },
+                context.clone(),
+                None
+            ),
+            (
+                BalanceChangeSwap {
+                    balance_changes: HashMap::from_iter([
+                        ("wrap.near".parse().unwrap(), -135259796188882904388200),
+                        (
+                            "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                                .parse()
+                                .unwrap(),
+                            649513
+                        ),
+                    ]),
+                    pool_swaps: vec![wnear_to_usdc],
+                },
+                context,
+                None
+            ),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn detects_refdcl_pool_state_changes() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 217_682_328,
+                end_exclusive: Some(217_682_329),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    let receipt_id = "CrMDvQJv2GA22NqZq4Sat7RmVGrcyrNKDZmAs6WgMUqZ"
+        .parse()
+        .unwrap();
+    let changes = indexer
+        .handler
+        .state_changes
+        .into_iter()
+        .filter(|change| change.receipt_id == receipt_id)
+        .collect::<Vec<_>>();
+    assert_eq!(changes.len(), 2);
+    assert!(changes.contains(&PoolChangeEvent {
+        pool_id: "REFDCL-17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1|wrap.near|100".to_owned(),
+        receipt_id,
+        block_timestamp_nanosec: 1790628463557084872,
+        block_height: 217682328,
+        pool: PoolType::RefDcl(RefDclPool {
+            token_x: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1".parse().unwrap(),
+            token_y: "wrap.near".parse().unwrap(),
+            fee: 100,
+            point_delta: 1,
+            current_point: 398794,
+            liquidity: 24866783793139273,
+            liquidity_x: 695142455539936,
+        }),
+    }));
+    assert!(changes.contains(&PoolChangeEvent {
+        pool_id: "REFDCL-17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1|token.rhealab.near|100".to_owned(),
+        receipt_id,
+        block_timestamp_nanosec: 1790628463557084872,
+        block_height: 217682328,
+        pool: PoolType::RefDcl(RefDclPool {
+            token_x: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1".parse().unwrap(),
+            token_y: "token.rhealab.near".parse().unwrap(),
+            fee: 100,
+            point_delta: 1,
+            current_point: 296720,
+            liquidity: 57378952168,
+            liquidity_x: 24390381593,
+        }),
+    }));
 }
 
 #[tokio::test]

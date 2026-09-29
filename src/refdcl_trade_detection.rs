@@ -46,7 +46,7 @@ pub async fn detect(
     if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == REFDCL_CONTRACT_ID {
         for log in &receipt.receipt.execution_outcome.outcome.logs {
             if let Ok(event) = EventLogData::<Vec<SwapEvent>>::deserialize(log)
-                && event.event == "swap"
+                && (event.event == "swap" || event.event == "swap_desire")
                 && event.standard == "dcl.ref"
             {
                 for swap in event.data {
