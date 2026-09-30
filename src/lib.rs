@@ -204,7 +204,7 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                             log::warn!("Invalid DCL pool record: {:02x?}", key);
                             continue;
                         };
-                        if pool.version != 0 {
+                        if pool.version > 1 {
                             log::warn!("Unknown DCL pool record version: {}", pool.version);
                             continue;
                         }
