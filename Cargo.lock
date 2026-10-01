@@ -1988,6 +1988,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "inindexer"
+version = "9.0.0"
+source = "git+https://github.com/INTEARnear/inindexer#02825e99fb5c7006edbc8b48f0b4fe477cbb28f9"
+dependencies = [
+ "async-trait",
+ "fastnear-neardata-fetcher",
+ "fastnear-primitives",
+ "futures",
+ "log",
+ "near-indexer-primitives",
+ "semver",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "intear-events"
 version = "0.1.0"
 source = "git+https://github.com/INTEARnear/intear-events#f32fb991e7e6547c37322f1e8eff991a45d98cdb"
@@ -1999,7 +2017,7 @@ dependencies = [
  "futures",
  "inevents",
  "inevents-redis",
- "inindexer",
+ "inindexer 8.0.0",
  "log",
  "num-traits",
  "schemars 0.8.22",
@@ -4438,7 +4456,7 @@ dependencies = [
  "borsh",
  "dotenv",
  "inevents-redis",
- "inindexer",
+ "inindexer 9.0.0",
  "intear-events",
  "log",
  "redis",
