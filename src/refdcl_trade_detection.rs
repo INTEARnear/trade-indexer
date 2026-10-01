@@ -32,6 +32,28 @@ struct SwapEvent {
     total_fee: FtBalance,
 }
 
+#[derive(Deserialize, Debug)]
+struct FtOnTransferArgs {
+    msg: String,
+}
+
+/// Variants of the ft_on_transfer msg that accept a referral_id
+#[derive(Deserialize, Debug)]
+enum TokenReceiverMessage {
+    Swap {
+        #[serde(default)]
+        referral_id: Option<AccountId>,
+    },
+    SwapByOutput {
+        #[serde(default)]
+        referral_id: Option<AccountId>,
+    },
+    LimitOrderWithSwap {
+        #[serde(default)]
+        referral_id: Option<AccountId>,
+    },
+}
+
 pub async fn detect(
     receipt: &TransactionReceipt,
     transaction: &IncompleteTransaction,
@@ -43,7 +65,29 @@ pub async fn detect(
         // CA is unknown on testnet
         return;
     }
-    if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == REFDCL_CONTRACT_ID {
+    if receipt.is_successful(false)
+        && receipt.receipt.receipt.receiver_id == REFDCL_CONTRACT_ID
+        && let ReceiptEnumView::Action { actions, .. } = &receipt.receipt.receipt.receipt
+    {
+        let referrer = actions.iter().find_map(|action| {
+            let ActionView::FunctionCall {
+                method_name, args, ..
+            } = action
+            else {
+                return None;
+            };
+            if method_name != "ft_on_transfer" {
+                return None;
+            }
+            let call = serde_json::from_slice::<FtOnTransferArgs>(args).ok()?;
+            match serde_json::from_str::<TokenReceiverMessage>(&call.msg).ok()? {
+                TokenReceiverMessage::Swap { referral_id }
+                | TokenReceiverMessage::SwapByOutput { referral_id }
+                | TokenReceiverMessage::LimitOrderWithSwap { referral_id } => {
+                    referral_id.map(|id| id.to_string())
+                }
+            }
+        });
         for log in &receipt.receipt.execution_outcome.outcome.logs {
             if let Ok(event) = EventLogData::<Vec<SwapEvent>>::deserialize(log)
                 && (event.event == "swap" || event.event == "swap_desire")
@@ -114,7 +158,7 @@ pub async fn detect(
                                     amount_out: swap.amount_out,
                                 }],
                             },
-                            None,
+                            referrer.clone(),
                         )
                         .await;
                 }
