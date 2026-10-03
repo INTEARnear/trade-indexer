@@ -1957,6 +1957,8 @@ async fn detects_refdcl_pool_state_changes() {
             current_point: 398794,
             liquidity: 24866783793139273,
             liquidity_x: 695142455539936,
+            total_x: 585708200107,
+            total_y: 40209754863927856208440213112,
         }),
     }));
     assert!(changes.contains(&PoolChangeEvent {
@@ -1972,6 +1974,78 @@ async fn detects_refdcl_pool_state_changes() {
             current_point: 296720,
             liquidity: 57378952168,
             liquidity_x: 24390381593,
+            total_x: 53818377405,
+            total_y: 96786234724137964124942,
+        }),
+    }));
+}
+
+#[tokio::test]
+async fn detects_refdcl_v1_pool_state_changes() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 218_324_945,
+                end_exclusive: Some(218_324_946),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    let receipt_id = "7v11eLbTbqFfxCxv7xWFsJMM5BDABeBtFSRoxfbBgSmt"
+        .parse()
+        .unwrap();
+    let changes = indexer
+        .handler
+        .state_changes
+        .into_iter()
+        .filter(|change| change.receipt_id == receipt_id)
+        .collect::<Vec<_>>();
+    assert_eq!(changes.len(), 2);
+    assert!(changes.contains(&PoolChangeEvent {
+        pool_id: "REFDCL-diarhea.nearlytrade.near|mpoo.nearlytrade.near|10000".to_owned(),
+        receipt_id,
+        block_timestamp_nanosec: 1791015795198789649,
+        block_height: 218324945,
+        pool: PoolType::RefDcl(RefDclPool {
+            token_x: "diarhea.nearlytrade.near".parse().unwrap(),
+            token_y: "mpoo.nearlytrade.near".parse().unwrap(),
+            fee: 10000,
+            point_delta: 200,
+            current_point: 39585,
+            liquidity: 4145910796551150066448,
+            liquidity_x: 480178860353168996289,
+            total_x: 4605053981467535738871006,
+            total_y: 601122031937529067913359571,
+        }),
+    }));
+    assert!(changes.contains(&PoolChangeEvent {
+        pool_id: "REFDCL-diarhea.nearlytrade.near|token.rhealab.near|10000".to_owned(),
+        receipt_id,
+        block_timestamp_nanosec: 1791015795198789649,
+        block_height: 218324945,
+        pool: PoolType::RefDcl(RefDclPool {
+            token_x: "diarhea.nearlytrade.near".parse().unwrap(),
+            token_y: "token.rhealab.near".parse().unwrap(),
+            fee: 10000,
+            point_delta: 200,
+            current_point: -46218,
+            liquidity: 330331921588474755121,
+            liquidity_x: 74543450387582000842,
+            total_x: 68173817445244611507098472,
+            total_y: 618498961193405902040586,
         }),
     }));
 }

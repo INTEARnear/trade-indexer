@@ -233,6 +233,8 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                     current_point: pool.current_point,
                                     liquidity: pool.liquidity,
                                     liquidity_x: pool.liquidity_x,
+                                    total_x: pool.total_x,
+                                    total_y: pool.total_y,
                                 }),
                             })
                             .await;
