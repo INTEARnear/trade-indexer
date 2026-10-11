@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use inindexer::{
-    BlockRange, near_indexer_primitives::types::BlockHeight, neardata::NeardataProvider,
+    BlockRange, message_provider::ParallelProviderStreamer,
+    near_indexer_primitives::types::BlockHeight, neardata_old::OldNeardataProvider,
 };
 use intear_events::events::trade::trade_pool_change::{
     AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachFeeReceiver,
@@ -28,12 +29,23 @@ struct TestHandler {
     liquidity_changes: Vec<(TradeContext, LiquidityChange)>,
 }
 
-fn provider() -> NeardataProvider {
-    let mut provider = NeardataProvider::mainnet();
+/// Fetches each block by height. NeardataProvider asks for the last block first, which neardata
+/// rate limits for a minute or more when many tests start at once without an API key.
+fn provider() -> ParallelProviderStreamer<OldNeardataProvider> {
+    let mut client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(10));
     if let Ok(token) = std::env::var("FASTNEAR_API_KEY") {
-        provider = provider.with_auth_bearer_token(token);
+        client = client.default_headers(reqwest::header::HeaderMap::from_iter([(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {token}").parse().unwrap(),
+        )]));
     }
-    provider
+    ParallelProviderStreamer::new(
+        OldNeardataProvider::with_base_url_and_client(
+            "https://mainnet.neardata.xyz".to_owned(),
+            client.build().unwrap(),
+        ),
+        4,
+    )
 }
 
 #[async_trait]
@@ -2184,8 +2196,15 @@ async fn detects_ref_degen_pool_state_changes() {
     .await
     .unwrap();
 
+    // Rhea DCL pools changed in these blocks too
+    let ref_state_changes = indexer
+        .handler
+        .state_changes
+        .into_iter()
+        .filter(|change| change.pool_id.starts_with("REF-"))
+        .collect::<Vec<_>>();
     assert_eq!(
-        indexer.handler.state_changes,
+        ref_state_changes,
         vec![
             PoolChangeEvent {
                 pool_id: "REF-5949".to_owned(),
