@@ -1,10 +1,5 @@
 use std::collections::HashMap;
 
-use crate::ref_finance_state;
-use crate::{
-    BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap, TradeContext,
-    TradeEventHandler,
-};
 use async_trait::async_trait;
 use inevents_redis::RedisEventStream;
 use inindexer::near_indexer_primitives::types::{AccountId, BlockHeight};
@@ -18,6 +13,11 @@ use intear_events::events::trade::trade_pool_change::{
 };
 use intear_events::events::trade::trade_swap::TradeSwapEvent;
 use redis::aio::ConnectionManager;
+use trade_indexer::ref_finance_state;
+use trade_indexer::{
+    BalanceChangeSwap, LiquidityChange, PoolChangeEvent, PoolType, RawPoolSwap, TradeContext,
+    TradeEventHandler,
+};
 
 pub struct PushToRedisStream {
     pool_stream: RedisEventStream<TradePoolEvent>,
@@ -213,7 +213,7 @@ impl TradeEventHandler for PushToRedisStream {
     async fn on_liquidity_pool(
         &mut self,
         context: TradeContext,
-        pool_id: PoolId,
+        pool_id: String,
         tokens: HashMap<AccountId, i128>,
     ) {
         self.liquidity_pool_stream.add_event(LiquidityPoolEvent {
@@ -226,6 +226,8 @@ impl TradeEventHandler for PushToRedisStream {
             receipt_id: context.receipt_id,
         });
     }
+
+    async fn on_liquidity_change(&mut self, _context: TradeContext, _change: LiquidityChange) {}
 
     async fn flush_events(&mut self, block_height: BlockHeight) {
         self.pool_stream

@@ -13,15 +13,12 @@ use inindexer::{
     },
 };
 use intear_events::events::trade::trade_pool_change::{AidolsPool, IntearPlachPool, RefDclPool};
-use ref_trade_detection::REF_CONTRACT_ID;
-use ref_trade_detection::TESTNET_REF_CONTRACT_ID;
+use ref_trade_detection::{REF_CONTRACT_ID, TESTNET_REF_CONTRACT_ID};
 use refdcl_trade_detection::REFDCL_CONTRACT_ID;
 
 pub mod aidols_state;
 pub mod aidols_trade_detection;
-pub mod intear_dex_types;
 pub mod intear_plach_trade_detection;
-pub mod redis_handler;
 pub mod ref_finance_state;
 pub mod ref_trade_detection;
 pub mod refdcl_state;
@@ -53,6 +50,8 @@ pub trait TradeEventHandler: Send + Sync + 'static {
         pool_id: PoolId,
         tokens: HashMap<AccountId, i128>,
     );
+    /// The same liquidity changes as `on_liquidity_pool`, for pools of exactly two tokens
+    async fn on_liquidity_change(&mut self, context: TradeContext, change: LiquidityChange);
     async fn flush_events(&mut self, block_height: BlockHeight);
 }
 
@@ -66,7 +65,6 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
         } else {
             REF_CONTRACT_ID
         };
-        let aidols_contract_id = AIDOLS_CONTRACT_ID;
         for shard in block.shards.iter() {
             for state_change in shard.state_changes.iter() {
                 if let StateChangeValueView::DataUpdate {
@@ -126,7 +124,7 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                             };
                             self.handler.on_pool_change(pool).await;
                         }
-                    } else if account_id == aidols_contract_id {
+                    } else if account_id == AIDOLS_CONTRACT_ID && !self.is_testnet {
                         let receipt_id =
                             if let StateChangeCauseView::ReceiptProcessing { receipt_hash } =
                                 &state_change.cause
@@ -308,12 +306,89 @@ pub struct RawPoolSwap {
     pub token_out: AccountId,
     pub amount_in: FtBalance,
     pub amount_out: FtBalance,
+    pub referrer: Option<AccountId>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct BalanceChangeSwap {
     pub balance_changes: HashMap<AccountId, i128>,
     pub pool_swaps: Vec<RawPoolSwap>,
+}
+
+impl BalanceChangeSwap {
+    pub fn new(pool_swaps: Vec<RawPoolSwap>) -> Option<Self> {
+        let mut balance_changes = HashMap::new();
+        for swap in &pool_swaps {
+            let (Ok(amount_in), Ok(amount_out)) = (
+                i128::try_from(swap.amount_in),
+                i128::try_from(swap.amount_out),
+            ) else {
+                log::warn!("Amount overflow in swap: {swap:?}");
+                continue;
+            };
+            *balance_changes.entry(swap.token_in.clone()).or_insert(0) -= amount_in;
+            *balance_changes.entry(swap.token_out.clone()).or_insert(0) += amount_out;
+        }
+        balance_changes.retain(|_, change| *change != 0);
+        (!balance_changes.is_empty()).then_some(Self {
+            balance_changes,
+            pool_swaps,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum LiquidityChangeKind {
+    Add,
+    Remove,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct LiquidityChange {
+    pub pool: PoolId,
+    pub kind: LiquidityChangeKind,
+    pub token_a: AccountId,
+    pub amount_a: FtBalance,
+    pub token_b: AccountId,
+    pub amount_b: FtBalance,
+}
+
+/// Reports a liquidity change to both `on_liquidity_pool` and, for a pool of two tokens,
+/// `on_liquidity_change`. on_liquidity_pool is not reported if an amount doesn't fit in i128.
+pub(crate) async fn report_liquidity(
+    handler: &mut impl TradeEventHandler,
+    context: TradeContext,
+    pool: PoolId,
+    kind: LiquidityChangeKind,
+    tokens: Vec<(AccountId, FtBalance)>,
+) {
+    if let Ok([(token_a, amount_a), (token_b, amount_b)]) = <[_; 2]>::try_from(tokens.clone()) {
+        let change = LiquidityChange {
+            pool: pool.clone(),
+            kind,
+            token_a,
+            amount_a,
+            token_b,
+            amount_b,
+        };
+        handler.on_liquidity_change(context.clone(), change).await;
+    }
+
+    let mut signed = HashMap::new();
+    for (token, amount) in &tokens {
+        let Ok(amount) = i128::try_from(*amount) else {
+            log::warn!("Amount overflow in liquidity change of {pool}: {amount}");
+            return;
+        };
+        let amount = match kind {
+            LiquidityChangeKind::Add => amount,
+            LiquidityChangeKind::Remove => -amount,
+        };
+        signed.insert(token.clone(), amount);
+    }
+    handler
+        .on_liquidity_pool(context.clone(), pool.clone(), signed)
+        .await;
 }
 
 #[derive(Debug, PartialEq)]

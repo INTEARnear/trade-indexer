@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use inindexer::near_utils::EventLogData;
 use inindexer::{
     IncompleteTransaction, TransactionReceipt,
@@ -59,48 +57,23 @@ pub async fn detect(
                     } else {
                         swap.input_token.clone()
                     };
-                    handler
-                        .on_raw_pool_swap(
-                            context.clone(),
-                            RawPoolSwap {
-                                pool: create_aidols_pool_id(&token),
-                                token_in: swap.input_token.clone(),
-                                token_out: swap.output_token.clone(),
-                                amount_in: swap.input_amount,
-                                amount_out: swap.output_amount,
-                            },
-                        )
-                        .await;
-                    let Ok(input_amount_i128) = i128::try_from(swap.input_amount) else {
-                        log::warn!("Input amount overflow in swap event: {}", swap.input_amount);
-                        continue;
-                    };
-                    let Ok(output_amount_i128) = i128::try_from(swap.output_amount) else {
-                        log::warn!(
-                            "Output amount overflow in swap event: {}",
-                            swap.output_amount
-                        );
-                        continue;
+                    let referrer = swap.referral_id.as_ref().map(|id| id.to_string());
+                    let raw_pool_swap = RawPoolSwap {
+                        pool: create_aidols_pool_id(&token),
+                        token_in: swap.input_token,
+                        token_out: swap.output_token,
+                        amount_in: swap.input_amount,
+                        amount_out: swap.output_amount,
+                        referrer: swap.referral_id,
                     };
                     handler
-                        .on_balance_change_swap(
-                            context,
-                            BalanceChangeSwap {
-                                balance_changes: HashMap::from_iter([
-                                    (swap.input_token.clone(), -input_amount_i128),
-                                    (swap.output_token.clone(), output_amount_i128),
-                                ]),
-                                pool_swaps: vec![RawPoolSwap {
-                                    pool: create_aidols_pool_id(&token),
-                                    token_in: swap.input_token.clone(),
-                                    token_out: swap.output_token.clone(),
-                                    amount_in: swap.input_amount,
-                                    amount_out: swap.output_amount,
-                                }],
-                            },
-                            swap.referral_id.map(|id| id.to_string()),
-                        )
+                        .on_raw_pool_swap(context.clone(), raw_pool_swap.clone())
                         .await;
+                    if let Some(balance_changes) = BalanceChangeSwap::new(vec![raw_pool_swap]) {
+                        handler
+                            .on_balance_change_swap(context, balance_changes, referrer)
+                            .await;
+                    }
                 }
             }
         }

@@ -1,4 +1,6 @@
-use trade_indexer::redis_handler::PushToRedisStream;
+mod redis_handler;
+
+use redis_handler::PushToRedisStream;
 
 use inindexer::neardata::NeardataProvider;
 use inindexer::{
@@ -8,7 +10,7 @@ use redis::aio::ConnectionManager;
 
 #[tokio::main]
 async fn main() {
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
     simple_logger::SimpleLogger::new()
         .with_level(log::LevelFilter::Info)
         .with_module_level("inindexer::performance", log::LevelFilter::Debug)

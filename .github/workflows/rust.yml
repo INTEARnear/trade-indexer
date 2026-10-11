@@ -15,12 +15,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --verbose --all-features
     - name: Check format
       run: cargo fmt --check --verbose
     - name: Check lints
-      run: cargo clippy --verbose -- --deny clippy::all
+      run: cargo clippy --verbose --all-features --all-targets -- --deny clippy::all
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose --all-features
       env:
         FASTNEAR_API_KEY: ${{ secrets.FASTNEAR_API_KEY }}

@@ -3,7 +3,8 @@ use inindexer::{
     BlockRange, near_indexer_primitives::types::BlockHeight, neardata::NeardataProvider,
 };
 use intear_events::events::trade::trade_pool_change::{
-    AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachPool, RefDclPool,
+    AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachFeeReceiver,
+    IntearPlachPool, RefDclPool,
 };
 use std::collections::HashMap;
 
@@ -13,8 +14,8 @@ use inindexer::{
 };
 
 use crate::{
-    BalanceChangeSwap, PoolChangeEvent, PoolId, PoolType, RawPoolSwap, TradeContext,
-    TradeEventHandler, TradeIndexer, ref_finance_state,
+    BalanceChangeSwap, LiquidityChange, LiquidityChangeKind, PoolChangeEvent, PoolId, PoolType,
+    RawPoolSwap, TradeContext, TradeEventHandler, TradeIndexer, ref_finance_state,
 };
 
 #[derive(Default)]
@@ -24,6 +25,7 @@ struct TestHandler {
         HashMap<AccountId, Vec<(BalanceChangeSwap, TradeContext, Option<String>)>>,
     state_changes: Vec<PoolChangeEvent>,
     liquidity_pool_events: Vec<(TradeContext, PoolId, HashMap<AccountId, i128>)>,
+    liquidity_changes: Vec<(TradeContext, LiquidityChange)>,
 }
 
 fn provider() -> NeardataProvider {
@@ -66,6 +68,10 @@ impl TradeEventHandler for TestHandler {
         tokens: HashMap<AccountId, i128>,
     ) {
         self.liquidity_pool_events.push((context, pool_id, tokens));
+    }
+
+    async fn on_liquidity_change(&mut self, context: TradeContext, change: LiquidityChange) {
+        self.liquidity_changes.push((context, change));
     }
 
     async fn flush_events(&mut self, _block_height: BlockHeight) {
@@ -111,7 +117,8 @@ async fn detects_ref_trades() {
                     .parse()
                     .unwrap(),
                 amount_in: 1000000000000000000000000,
-                amount_out: 1833478
+                amount_out: 1833478,
+                referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
             },
             TradeContext {
                 trader: "slimedragon.near".parse().unwrap(),
@@ -150,7 +157,8 @@ async fn detects_ref_trades() {
                         .parse()
                         .unwrap(),
                     amount_in: 1000000000000000000000000,
-                    amount_out: 1833478
+                    amount_out: 1833478,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                 }]
             },
             TradeContext {
@@ -206,7 +214,8 @@ async fn detects_ref_multistep_trades() {
                     token_in: "intel.tkn.near".parse().unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
                     amount_in: 137002618695271800286520468,
-                    amount_out: 26780878168917710181181086
+                    amount_out: 26780878168917710181181086,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "williamxx.near".parse().unwrap(),
@@ -226,7 +235,8 @@ async fn detects_ref_multistep_trades() {
                     token_in: "intel.tkn.near".parse().unwrap(),
                     token_out: "wojak.tkn.near".parse().unwrap(),
                     amount_in: 3527689591892726209943536,
-                    amount_out: 134692454322063117313149
+                    amount_out: 134692454322063117313149,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "williamxx.near".parse().unwrap(),
@@ -246,7 +256,8 @@ async fn detects_ref_multistep_trades() {
                     token_in: "wojak.tkn.near".parse().unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
                     amount_in: 134692454322063117313149,
-                    amount_out: 689165024382991682878108
+                    amount_out: 689165024382991682878108,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "williamxx.near".parse().unwrap(),
@@ -283,21 +294,24 @@ async fn detects_ref_multistep_trades() {
                         token_in: "intel.tkn.near".parse().unwrap(),
                         token_out: "wrap.near".parse().unwrap(),
                         amount_in: 137002618695271800286520468,
-                        amount_out: 26780878168917710181181086
+                        amount_out: 26780878168917710181181086,
+                        referrer: None,
                     },
                     RawPoolSwap {
                         pool: "REF-4921".to_owned(),
                         token_in: "intel.tkn.near".parse().unwrap(),
                         token_out: "wojak.tkn.near".parse().unwrap(),
                         amount_in: 3527689591892726209943536,
-                        amount_out: 134692454322063117313149
+                        amount_out: 134692454322063117313149,
+                        referrer: None,
                     },
                     RawPoolSwap {
                         pool: "REF-4875".to_owned(),
                         token_in: "wojak.tkn.near".parse().unwrap(),
                         token_out: "wrap.near".parse().unwrap(),
                         amount_in: 134692454322063117313149,
-                        amount_out: 689165024382991682878108
+                        amount_out: 689165024382991682878108,
+                        referrer: None,
                     }
                 ]
             },
@@ -358,7 +372,8 @@ async fn detects_ref_tearbot_trades() {
                     token_in: "wrap.near".parse().unwrap(),
                     token_out: "abg-966.meme-cooking.near".parse().unwrap(),
                     amount_in: 6000000000000000000000,
-                    amount_out: 193501745035556127133
+                    amount_out: 193501745035556127133,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "sneering_enigma.user.intear.near".parse().unwrap(),
@@ -378,7 +393,8 @@ async fn detects_ref_tearbot_trades() {
                     token_in: "abg-966.meme-cooking.near".parse().unwrap(),
                     token_out: "bullish-1254.meme-cooking.near".parse().unwrap(),
                     amount_in: 193501745035556127133,
-                    amount_out: 9544440457365313592258
+                    amount_out: 9544440457365313592258,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "sneering_enigma.user.intear.near".parse().unwrap(),
@@ -398,7 +414,8 @@ async fn detects_ref_tearbot_trades() {
                     token_in: "bullish-1254.meme-cooking.near".parse().unwrap(),
                     token_out: "noear-324.meme-cooking.near".parse().unwrap(),
                     amount_in: 9544440457365313592258,
-                    amount_out: 2363249266849562417601
+                    amount_out: 2363249266849562417601,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "sneering_enigma.user.intear.near".parse().unwrap(),
@@ -418,7 +435,8 @@ async fn detects_ref_tearbot_trades() {
                     token_in: "noear-324.meme-cooking.near".parse().unwrap(),
                     token_out: "jambo-1679.meme-cooking.near".parse().unwrap(),
                     amount_in: 2363249266849562417601,
-                    amount_out: 5039386076374332885
+                    amount_out: 5039386076374332885,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "sneering_enigma.user.intear.near".parse().unwrap(),
@@ -438,7 +456,8 @@ async fn detects_ref_tearbot_trades() {
                     token_in: "wrap.near".parse().unwrap(),
                     token_out: "zolanear-1726.meme-cooking.near".parse().unwrap(),
                     amount_in: 4000000000000000000000,
-                    amount_out: 276893747748111517610
+                    amount_out: 276893747748111517610,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "sneering_enigma.user.intear.near".parse().unwrap(),
@@ -458,7 +477,8 @@ async fn detects_ref_tearbot_trades() {
                     token_in: "zolanear-1726.meme-cooking.near".parse().unwrap(),
                     token_out: "gp.token0.near".parse().unwrap(),
                     amount_in: 276893747748111517610,
-                    amount_out: 3552779985208586898576
+                    amount_out: 3552779985208586898576,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "sneering_enigma.user.intear.near".parse().unwrap(),
@@ -478,7 +498,8 @@ async fn detects_ref_tearbot_trades() {
                     token_in: "gp.token0.near".parse().unwrap(),
                     token_out: "jambo-1679.meme-cooking.near".parse().unwrap(),
                     amount_in: 3552779985208586898576,
-                    amount_out: 3368505006729851836
+                    amount_out: 3368505006729851836,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "sneering_enigma.user.intear.near".parse().unwrap(),
@@ -519,49 +540,56 @@ async fn detects_ref_tearbot_trades() {
                         token_in: "wrap.near".parse().unwrap(),
                         token_out: "abg-966.meme-cooking.near".parse().unwrap(),
                         amount_in: 6000000000000000000000,
-                        amount_out: 193501745035556127133
+                        amount_out: 193501745035556127133,
+                        referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                     },
                     RawPoolSwap {
                         pool: "REF-5789".to_owned(),
                         token_in: "abg-966.meme-cooking.near".parse().unwrap(),
                         token_out: "bullish-1254.meme-cooking.near".parse().unwrap(),
                         amount_in: 193501745035556127133,
-                        amount_out: 9544440457365313592258
+                        amount_out: 9544440457365313592258,
+                        referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                     },
                     RawPoolSwap {
                         pool: "REF-5846".to_owned(),
                         token_in: "bullish-1254.meme-cooking.near".parse().unwrap(),
                         token_out: "noear-324.meme-cooking.near".parse().unwrap(),
                         amount_in: 9544440457365313592258,
-                        amount_out: 2363249266849562417601
+                        amount_out: 2363249266849562417601,
+                        referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                     },
                     RawPoolSwap {
                         pool: "REF-6558".to_owned(),
                         token_in: "noear-324.meme-cooking.near".parse().unwrap(),
                         token_out: "jambo-1679.meme-cooking.near".parse().unwrap(),
                         amount_in: 2363249266849562417601,
-                        amount_out: 5039386076374332885
+                        amount_out: 5039386076374332885,
+                        referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                     },
                     RawPoolSwap {
                         pool: "REF-6594".to_owned(),
                         token_in: "wrap.near".parse().unwrap(),
                         token_out: "zolanear-1726.meme-cooking.near".parse().unwrap(),
                         amount_in: 4000000000000000000000,
-                        amount_out: 276893747748111517610
+                        amount_out: 276893747748111517610,
+                        referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                     },
                     RawPoolSwap {
                         pool: "REF-6604".to_owned(),
                         token_in: "zolanear-1726.meme-cooking.near".parse().unwrap(),
                         token_out: "gp.token0.near".parse().unwrap(),
                         amount_in: 276893747748111517610,
-                        amount_out: 3552779985208586898576
+                        amount_out: 3552779985208586898576,
+                        referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                     },
                     RawPoolSwap {
                         pool: "REF-6520".to_owned(),
                         token_in: "gp.token0.near".parse().unwrap(),
                         token_out: "jambo-1679.meme-cooking.near".parse().unwrap(),
                         amount_in: 3552779985208586898576,
-                        amount_out: 3368505006729851836
+                        amount_out: 3368505006729851836,
+                        referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
                     }
                 ]
             },
@@ -618,7 +646,8 @@ async fn detects_ref_arbitrage_trades() {
                     token_in: "wrap.near".parse().unwrap(),
                     token_out: "token.0xshitzu.near".parse().unwrap(),
                     amount_in: 520000000000000000000000,
-                    amount_out: 3244576408763446222268
+                    amount_out: 3244576408763446222268,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
@@ -638,7 +667,8 @@ async fn detects_ref_arbitrage_trades() {
                     token_in: "token.0xshitzu.near".parse().unwrap(),
                     token_out: "nkok.tkn.near".parse().unwrap(),
                     amount_in: 3244576408763446222268,
-                    amount_out: 11186538717588640655335259
+                    amount_out: 11186538717588640655335259,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
@@ -658,7 +688,8 @@ async fn detects_ref_arbitrage_trades() {
                     token_in: "nkok.tkn.near".parse().unwrap(),
                     token_out: "slush.tkn.near".parse().unwrap(),
                     amount_in: 11186538717588640655335259,
-                    amount_out: 88180050805911386368580
+                    amount_out: 88180050805911386368580,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
@@ -678,7 +709,8 @@ async fn detects_ref_arbitrage_trades() {
                     token_in: "slush.tkn.near".parse().unwrap(),
                     token_out: "wojak.tkn.near".parse().unwrap(),
                     amount_in: 88180050805911386368580,
-                    amount_out: 102552548670451059547623
+                    amount_out: 102552548670451059547623,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
@@ -698,7 +730,8 @@ async fn detects_ref_arbitrage_trades() {
                     token_in: "wojak.tkn.near".parse().unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
                     amount_in: 102552548670451059547623,
-                    amount_out: 525408551701397302192601
+                    amount_out: 525408551701397302192601,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "bot.marior.near".parse().unwrap(),
@@ -732,35 +765,40 @@ async fn detects_ref_arbitrage_trades() {
                         token_in: "wrap.near".parse().unwrap(),
                         token_out: "token.0xshitzu.near".parse().unwrap(),
                         amount_in: 520000000000000000000000,
-                        amount_out: 3244576408763446222268
+                        amount_out: 3244576408763446222268,
+                        referrer: None,
                     },
                     RawPoolSwap {
                         pool: "REF-4821".to_owned(),
                         token_in: "token.0xshitzu.near".parse().unwrap(),
                         token_out: "nkok.tkn.near".parse().unwrap(),
                         amount_in: 3244576408763446222268,
-                        amount_out: 11186538717588640655335259
+                        amount_out: 11186538717588640655335259,
+                        referrer: None,
                     },
                     RawPoolSwap {
                         pool: "REF-4913".to_owned(),
                         token_in: "nkok.tkn.near".parse().unwrap(),
                         token_out: "slush.tkn.near".parse().unwrap(),
                         amount_in: 11186538717588640655335259,
-                        amount_out: 88180050805911386368580
+                        amount_out: 88180050805911386368580,
+                        referrer: None,
                     },
                     RawPoolSwap {
                         pool: "REF-4911".to_owned(),
                         token_in: "slush.tkn.near".parse().unwrap(),
                         token_out: "wojak.tkn.near".parse().unwrap(),
                         amount_in: 88180050805911386368580,
-                        amount_out: 102552548670451059547623
+                        amount_out: 102552548670451059547623,
+                        referrer: None,
                     },
                     RawPoolSwap {
                         pool: "REF-4875".to_owned(),
                         token_in: "wojak.tkn.near".parse().unwrap(),
                         token_out: "wrap.near".parse().unwrap(),
                         amount_in: 102552548670451059547623,
-                        amount_out: 525408551701397302192601
+                        amount_out: 525408551701397302192601,
+                        referrer: None,
                     }
                 ]
             },
@@ -897,7 +935,8 @@ async fn detects_delegate_ref_trades() {
                     token_in: "usdt.tether-token.near".parse().unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
                     amount_in: 29992989,
-                    amount_out: 4403363405586660846534469
+                    amount_out: 4403363405586660846534469,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "alanmain.near".parse().unwrap(),
@@ -917,7 +956,8 @@ async fn detects_delegate_ref_trades() {
                     token_in: "wrap.near".parse().unwrap(),
                     token_out: "intel.tkn.near".parse().unwrap(),
                     amount_in: 4403363405586660846534469,
-                    amount_out: 43884510175556511587239906
+                    amount_out: 43884510175556511587239906,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "alanmain.near".parse().unwrap(),
@@ -937,7 +977,8 @@ async fn detects_delegate_ref_trades() {
                     token_in: "usdt.tether-token.near".parse().unwrap(),
                     token_out: "intel.tkn.near".parse().unwrap(),
                     amount_in: 11647,
-                    amount_out: 17258755648110183139126
+                    amount_out: 17258755648110183139126,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "alanmain.near".parse().unwrap(),
@@ -974,21 +1015,24 @@ async fn detects_delegate_ref_trades() {
                         token_in: "usdt.tether-token.near".parse().unwrap(),
                         token_out: "wrap.near".parse().unwrap(),
                         amount_in: 29992989,
-                        amount_out: 4403363405586660846534469
+                        amount_out: 4403363405586660846534469,
+                        referrer: None,
                     },
                     RawPoolSwap {
                         pool: "REF-4663".to_owned(),
                         token_in: "wrap.near".parse().unwrap(),
                         token_out: "intel.tkn.near".parse().unwrap(),
                         amount_in: 4403363405586660846534469,
-                        amount_out: 43884510175556511587239906
+                        amount_out: 43884510175556511587239906,
+                        referrer: None,
                     },
                     RawPoolSwap {
                         pool: "REF-4668".to_owned(),
                         token_in: "usdt.tether-token.near".parse().unwrap(),
                         token_out: "intel.tkn.near".parse().unwrap(),
                         amount_in: 11647,
-                        amount_out: 17258755648110183139126
+                        amount_out: 17258755648110183139126,
+                        referrer: None,
                     }
                 ]
             },
@@ -1106,7 +1150,8 @@ async fn detects_ref_hot_tg_trades() {
                     token_in: "dd.tg".parse().unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
                     amount_in: 933200000000,
-                    amount_out: 1694993438147166311514743
+                    amount_out: 1694993438147166311514743,
+                    referrer: Some("owner.herewallet.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "acejapan.tg".parse().unwrap(),
@@ -1126,7 +1171,8 @@ async fn detects_ref_hot_tg_trades() {
                     token_in: "wrap.near".parse().unwrap(),
                     token_out: "usdt.tether-token.near".parse().unwrap(),
                     amount_in: 1694993438147166311514743,
-                    amount_out: 9458256
+                    amount_out: 9458256,
+                    referrer: Some("owner.herewallet.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "acejapan.tg".parse().unwrap(),
@@ -1160,14 +1206,16 @@ async fn detects_ref_hot_tg_trades() {
                         token_in: "dd.tg".parse().unwrap(),
                         token_out: "wrap.near".parse().unwrap(),
                         amount_in: 933200000000,
-                        amount_out: 1694993438147166311514743
+                        amount_out: 1694993438147166311514743,
+                        referrer: Some("owner.herewallet.near".parse().unwrap()),
                     },
                     RawPoolSwap {
                         pool: "REF-3879".to_string(),
                         token_in: "wrap.near".parse().unwrap(),
                         token_out: "usdt.tether-token.near".parse().unwrap(),
                         amount_in: 1694993438147166311514743,
-                        amount_out: 9458256
+                        amount_out: 9458256,
+                        referrer: Some("owner.herewallet.near".parse().unwrap()),
                     }
                 ]
             },
@@ -1235,6 +1283,31 @@ async fn detects_ref_liquidity_add() {
             ])
         )]
     );
+
+    assert_eq!(
+        indexer.handler.liquidity_changes,
+        vec![(
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 129352975,
+                block_timestamp_nanosec: 1727829382059005601,
+                transaction_id: "HyaTXZkaEDhPouF3L2AfmE4Pg8epP2kzX2d4jxgvnknE"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "GFU7m8uKS7unATiG6KSPjqa2zBjH1BaVoJMSQrR2rkF6"
+                    .parse()
+                    .unwrap(),
+            },
+            LiquidityChange {
+                pool: "REF-4663".to_owned(),
+                kind: LiquidityChangeKind::Add,
+                token_a: "wrap.near".parse().unwrap(),
+                amount_a: 999999999999999915648607,
+                token_b: "intel.tkn.near".parse().unwrap(),
+                amount_b: 15869989324782287999975226,
+            }
+        )]
+    );
 }
 
 #[tokio::test]
@@ -1285,6 +1358,31 @@ async fn detects_ref_liquidity_remove() {
             ])
         )]
     );
+
+    assert_eq!(
+        indexer.handler.liquidity_changes,
+        vec![(
+            TradeContext {
+                trader: "slimedragon.near".parse().unwrap(),
+                block_height: 129364252,
+                block_timestamp_nanosec: 1727842012958701333,
+                transaction_id: "7B124NAr1MktLjGbjiYFPBP1guXSkgp5TzAJvFzmX4xb"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "89gwSxyXaWDABkjgRSpRTKVEced9RpCX2UT8uXR5FsJR"
+                    .parse()
+                    .unwrap(),
+            },
+            LiquidityChange {
+                pool: "REF-4663".to_owned(),
+                kind: LiquidityChangeKind::Remove,
+                token_a: "wrap.near".parse().unwrap(),
+                amount_a: 1000312838374558764552331,
+                token_b: "intel.tkn.near".parse().unwrap(),
+                amount_b: 15865198314126424586378752,
+            }
+        )]
+    );
 }
 
 #[tokio::test]
@@ -1323,7 +1421,8 @@ async fn detects_ref_swap_by_output() {
                 token_in: "wrap.near".parse().unwrap(),
                 token_out: "intel.tkn.near".parse().unwrap(),
                 amount_in: 706788683547272399546037,
-                amount_out: 14932514982037617660395520
+                amount_out: 14932514982037617660395520,
+                referrer: None,
             },
             TradeContext {
                 trader: "fiery_drone.user.intear.near".parse().unwrap(),
@@ -1358,7 +1457,8 @@ async fn detects_ref_swap_by_output() {
                     token_in: "wrap.near".parse().unwrap(),
                     token_out: "intel.tkn.near".parse().unwrap(),
                     amount_in: 706788683547272399546037,
-                    amount_out: 14932514982037617660395520
+                    amount_out: 14932514982037617660395520,
+                    referrer: None,
                 },]
             },
             TradeContext {
@@ -1417,7 +1517,8 @@ async fn detects_ref_swap_by_output_transfer() {
                 token_in: "end.aidols.near".parse().unwrap(),
                 token_out: "wrap.near".parse().unwrap(),
                 amount_in: 3696035670585457669556649429,
-                amount_out: 78838174273858921161827
+                amount_out: 78838174273858921161827,
+                referrer: None,
             },
             TradeContext {
                 trader: "d0ebc7d872d5e3ee9281e9492aa5aca606cbc829c7dfc915a168ac75ccc23e7e"
@@ -1458,7 +1559,8 @@ async fn detects_ref_swap_by_output_transfer() {
                     token_in: "end.aidols.near".parse().unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
                     amount_in: 3696035670585457669556649429,
-                    amount_out: 78838174273858921161827
+                    amount_out: 78838174273858921161827,
+                    referrer: None,
                 },]
             },
             TradeContext {
@@ -1519,7 +1621,8 @@ async fn detects_aidols_buy() {
                 token_in: "wrap.near".parse().unwrap(),
                 token_out: "mcg.aidols.near".parse().unwrap(),
                 amount_in: 100000000000000000000000,
-                amount_out: 106755019637392545617767462252
+                amount_out: 106755019637392545617767462252,
+                referrer: Some("intear.near".parse().unwrap()),
             },
             TradeContext {
                 trader: "sneering_enigma.user.intear.near".parse().unwrap(),
@@ -1558,7 +1661,8 @@ async fn detects_aidols_buy() {
                     token_in: "wrap.near".parse().unwrap(),
                     token_out: "mcg.aidols.near".parse().unwrap(),
                     amount_in: 100000000000000000000000,
-                    amount_out: 106755019637392545617767462252
+                    amount_out: 106755019637392545617767462252,
+                    referrer: Some("intear.near".parse().unwrap()),
                 }]
             },
             TradeContext {
@@ -1613,7 +1717,8 @@ async fn detects_aidols_sell() {
                 token_in: "ponkeai.aidols.near".parse().unwrap(),
                 token_out: "wrap.near".parse().unwrap(),
                 amount_in: 399840063974410235905637744903,
-                amount_out: 100000000000000000000001
+                amount_out: 100000000000000000000001,
+                referrer: None,
             },
             TradeContext {
                 trader: "slimedragon.near".parse().unwrap(),
@@ -1649,7 +1754,8 @@ async fn detects_aidols_sell() {
                     token_in: "ponkeai.aidols.near".parse().unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
                     amount_in: 399840063974410235905637744903,
-                    amount_out: 100000000000000000000001
+                    amount_out: 100000000000000000000001,
+                    referrer: None,
                 }],
             },
             TradeContext {
@@ -1747,7 +1853,8 @@ async fn detects_refdcl_trades() {
                 token_in: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1".parse().unwrap(),
                 token_out: "wrap.near".parse().unwrap(),
                 amount_in: 50287157,
-                amount_out: 19802185927199304105095477
+                amount_out: 19802185927199304105095477,
+                referrer: None,
             },
             TradeContext {
                 trader: "5adcddad84c166d8792684c3ad652803df01fac582526dd5c21903b0b5aafe2d".parse().unwrap(),
@@ -1778,7 +1885,8 @@ async fn detects_refdcl_trades() {
                     token_in: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1".parse().unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
                     amount_in: 50287157,
-                    amount_out: 19802185927199304105095477
+                    amount_out: 19802185927199304105095477,
+                    referrer: None,
                 }]
             },
             TradeContext {
@@ -1836,6 +1944,7 @@ async fn detects_refdcl_swap_by_output_trades() {
         token_out: "token.rhealab.near".parse().unwrap(),
         amount_in: 649513,
         amount_out: 5000000000001757531,
+        referrer: None,
     };
     let wnear_to_usdc = RawPoolSwap {
         pool:
@@ -1847,6 +1956,7 @@ async fn detects_refdcl_swap_by_output_trades() {
             .unwrap(),
         amount_in: 135259796188882904388200,
         amount_out: 649513,
+        referrer: None,
     };
     assert_eq!(
         *indexer
@@ -2184,7 +2294,8 @@ async fn detects_intear_plach_trades() {
                 token_in: "jambo-1679.meme-cooking.near".parse().unwrap(),
                 token_out: "near".parse().unwrap(),
                 amount_in: 30000000000000000,
-                amount_out: 80128205128205128205
+                amount_out: 80128205128205128205,
+                referrer: None,
             },
             TradeContext {
                 trader: "slimedragon.near".parse().unwrap(),
@@ -2219,7 +2330,8 @@ async fn detects_intear_plach_trades() {
                     token_in: "jambo-1679.meme-cooking.near".parse().unwrap(),
                     token_out: "near".parse().unwrap(),
                     amount_in: 30000000000000000,
-                    amount_out: 80128205128205128205
+                    amount_out: 80128205128205128205,
+                    referrer: None,
                 }]
             },
             TradeContext {
@@ -2254,39 +2366,54 @@ async fn detects_intear_plach_pool_state_changes() {
                 postfetch_blocks: 0,
             }),
             ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 183_810_119,
-                end_exclusive: Some(183_810_123),
+                start_inclusive: 219_301_500,
+                end_exclusive: Some(219_301_511),
             })
         },
     )
     .await
     .unwrap();
 
-    assert_eq!(
-        indexer.handler.state_changes,
-        vec![PoolChangeEvent {
-            pool_id: "INTEARPLACH-0".to_owned(),
-            receipt_id: "Ax1HV2jKExzV6uLq8spNpJanCnCcSpxLaRxDpZAKpKr4"
-                .parse()
-                .unwrap(),
-            block_timestamp_nanosec: 1770042352791768939,
-            block_height: 183810122,
-            pool: PoolType::IntearPlach(IntearPlachPool::Private {
-                assets: (
-                    IntearAssetWithBalance {
-                        asset_id: "nep141:jambo-1679.meme-cooking.near".parse().unwrap(),
-                        balance: 1950000000000000000,
-                    },
-                    IntearAssetWithBalance {
-                        asset_id: "near".parse().unwrap(),
-                        balance: 5128205128205128205130,
-                    },
-                ),
-                fees: IntearPlachFeeConfiguration { receivers: vec![] },
-                owner_id: "slimedragon.near".parse().unwrap(),
-            })
-        }]
-    );
+    let launch_pool = |near_balance, launched_balance| PoolChangeEvent {
+        pool_id: "INTEARPLACH-260".to_owned(),
+        receipt_id: "Gqmb5CrGoYCWxUFMwpzqRsZD2ncLtSs4qLVCLFyrxMhK"
+            .parse()
+            .unwrap(),
+        block_timestamp_nanosec: 1791590831111666828,
+        block_height: 219301507,
+        pool: PoolType::IntearPlach(IntearPlachPool::LaunchV2 {
+            quote_asset: IntearAssetWithBalance {
+                asset_id: "near".parse().unwrap(),
+                balance: near_balance,
+            },
+            launched_asset: IntearAssetWithBalance {
+                asset_id: "nep141:nero-1.launch-v2.intear.near".parse().unwrap(),
+                balance: launched_balance,
+            },
+            fees: IntearPlachFeeConfiguration {
+                receivers: vec![
+                    (
+                        IntearPlachFeeReceiver::Account("skipkon.near".parse().unwrap()),
+                        22200,
+                    ),
+                    (
+                        IntearPlachFeeReceiver::Account("plach.intear.near".parse().unwrap()),
+                        1000,
+                    ),
+                ],
+            },
+            phantom_liquidity: 300000000000000000000000000,
+        }),
+    };
+    // Launched, then the launcher's first buy
+    assert!(indexer.handler.state_changes.contains(&launch_pool(
+        300000000000000000000000000,
+        1000000000000000000000000000000000
+    )));
+    assert!(indexer.handler.state_changes.contains(&launch_pool(
+        300976800000000000000000000,
+        996754567129426587032621783473012
+    )));
 }
 
 #[tokio::test]
@@ -2327,6 +2454,23 @@ async fn detects_intear_plach_liquidity_add() {
             ("wrap.near".parse().unwrap(), 500000000000000000000),
         ])
     );
+
+    assert_eq!(indexer.handler.liquidity_changes.len(), 1);
+    let (context, change) = &indexer.handler.liquidity_changes[0];
+    assert_eq!(
+        context.trader,
+        "slimedragon.near".parse::<AccountId>().unwrap()
+    );
+    assert_eq!(change.pool, "INTEARPLACH-2");
+    assert_eq!(change.kind, LiquidityChangeKind::Add);
+    // The pool is NEAR against wNEAR, in whichever order the event lists them
+    let mut tokens = [change.token_a.as_str(), change.token_b.as_str()];
+    tokens.sort();
+    assert_eq!(tokens, ["near", "wrap.near"]);
+    assert_eq!(
+        (change.amount_a, change.amount_b),
+        (500000000000000000000, 500000000000000000000)
+    );
 }
 
 #[tokio::test]
@@ -2366,6 +2510,23 @@ async fn detects_intear_plach_liquidity_remove() {
             ("near".parse().unwrap(), -5000500000000000000000000),
             ("wrap.near".parse().unwrap(), -5000500000000000000000000),
         ])
+    );
+
+    assert_eq!(indexer.handler.liquidity_changes.len(), 1);
+    let (context, change) = &indexer.handler.liquidity_changes[0];
+    assert_eq!(
+        context.trader,
+        "slimedragon.near".parse::<AccountId>().unwrap()
+    );
+    assert_eq!(change.pool, "INTEARPLACH-2");
+    assert_eq!(change.kind, LiquidityChangeKind::Remove);
+    // The pool is NEAR against wNEAR, in whichever order the event lists them
+    let mut tokens = [change.token_a.as_str(), change.token_b.as_str()];
+    tokens.sort();
+    assert_eq!(tokens, ["near", "wrap.near"]);
+    assert_eq!(
+        (change.amount_a, change.amount_b),
+        (5000500000000000000000000, 5000500000000000000000000)
     );
 }
 
@@ -2408,7 +2569,8 @@ async fn detects_aggregatedex_trades() {
                         .unwrap(),
                     token_out: "wrap.near".parse().unwrap(),
                     amount_in: 499500000,
-                    amount_out: 166180759515527998936891466
+                    amount_out: 166180759515527998936891466,
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "t-rexcoochie.near".parse().unwrap(),
@@ -2428,7 +2590,8 @@ async fn detects_aggregatedex_trades() {
                     token_in: "wrap.near".parse().unwrap(),
                     token_out: "token.lonkingnearbackto2024.near".parse().unwrap(),
                     amount_in: 166180759515527998936891466,
-                    amount_out: 318958630231220771
+                    amount_out: 318958630231220771,
+                    referrer: Some("onebot.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "t-rexcoochie.near".parse().unwrap(),
@@ -2473,6 +2636,7 @@ async fn detects_aggregatedex_trades() {
                         token_out: "wrap.near".parse().unwrap(),
                         amount_in: 499500000,
                         amount_out: 166180759515527998936891466,
+                        referrer: None,
                     }],
                 },
                 TradeContext {
@@ -2506,6 +2670,7 @@ async fn detects_aggregatedex_trades() {
                         token_out: "token.lonkingnearbackto2024.near".parse().unwrap(),
                         amount_in: 166180759515527998936891466,
                         amount_out: 318958630231220771,
+                        referrer: Some("onebot.near".parse().unwrap()),
                     }],
                 },
                 TradeContext {
@@ -2522,5 +2687,300 @@ async fn detects_aggregatedex_trades() {
                 Some("onebot.near".to_string()),
             ),
         ]
+    );
+}
+
+#[tokio::test]
+async fn detects_refdcl_liquidity_add() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 218_422_765,
+                end_exclusive: Some(218_422_769),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        indexer.handler.liquidity_changes,
+        vec![(
+            TradeContext {
+                trader: "blastnearlaunchpad.near".parse().unwrap(),
+                block_height: 218422767,
+                block_timestamp_nanosec: 1791073228897770058,
+                transaction_id: "2hQ63675gGUZGJBFN3A8x1n3cdvCbGZDNcKyy59AJJFX"
+                    .parse()
+                    .unwrap(),
+                receipt_id: "6fHpj8UPoxxc4N2JAcnN5iS2cLRb3uFYXsJyhfJpXgDk"
+                    .parse()
+                    .unwrap(),
+            },
+            LiquidityChange {
+                pool: "REFDCL-neardoge.blastnearlaunchpad.near|wrap.near|10000".to_owned(),
+                kind: LiquidityChangeKind::Add,
+                token_a: "neardoge.blastnearlaunchpad.near".parse().unwrap(),
+                amount_a: 799999999999999999999995202,
+                token_b: "wrap.near".parse().unwrap(),
+                amount_b: 0,
+            }
+        )]
+    );
+    assert_eq!(
+        indexer.handler.liquidity_pool_events,
+        vec![(
+            indexer.handler.liquidity_changes[0].0.clone(),
+            "REFDCL-neardoge.blastnearlaunchpad.near|wrap.near|10000".to_owned(),
+            HashMap::from_iter([
+                (
+                    "neardoge.blastnearlaunchpad.near".parse().unwrap(),
+                    799999999999999999999995202
+                ),
+                ("wrap.near".parse().unwrap(), 0),
+            ])
+        )]
+    );
+}
+
+#[tokio::test]
+async fn doesnt_detect_refdcl_fee_claims_as_liquidity_remove() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 218_422_810,
+                end_exclusive: Some(218_422_814),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(indexer.handler.liquidity_changes.is_empty());
+    assert!(indexer.handler.liquidity_pool_events.is_empty());
+}
+
+#[tokio::test]
+async fn detects_refdcl_liquidity_remove() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 218_404_295,
+                end_exclusive: Some(218_404_299),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    let context = TradeContext {
+        trader: "1837d63fb97186e511371c4fb35d9feeec82f6556b183a413b4e6f2e6d2a9fa4"
+            .parse()
+            .unwrap(),
+        block_height: 218404297,
+        block_timestamp_nanosec: 1791062423330047579,
+        transaction_id: "3VLhHonTrViMq1CLi8sd7FaPt3BPko2vvbXno4MjkSDU"
+            .parse()
+            .unwrap(),
+        receipt_id: "3NPYgpK5Ean6LFhh4SRuw5ujwHejPHuGGAEVCcuPT9gq"
+            .parse()
+            .unwrap(),
+    };
+    assert_eq!(
+        indexer.handler.liquidity_changes,
+        vec![
+            (
+                context.clone(),
+                LiquidityChange {
+                    pool: "REFDCL-wif.dogwifnearhat.near|wrap.near|100".to_owned(),
+                    kind: LiquidityChangeKind::Remove,
+                    token_a: "wif.dogwifnearhat.near".parse().unwrap(),
+                    amount_a: 53088858398723387736317624,
+                    token_b: "wrap.near".parse().unwrap(),
+                    amount_b: 21808127405011745018483663,
+                }
+            ),
+            (
+                context.clone(),
+                LiquidityChange {
+                    pool: "REFDCL-wif.dogwifnearhat.near|wrap.near|100".to_owned(),
+                    kind: LiquidityChangeKind::Remove,
+                    token_a: "wif.dogwifnearhat.near".parse().unwrap(),
+                    amount_a: 939999999999999999999995622,
+                    token_b: "wrap.near".parse().unwrap(),
+                    amount_b: 0,
+                }
+            ),
+        ]
+    );
+    assert_eq!(
+        indexer.handler.liquidity_pool_events,
+        vec![
+            (
+                context.clone(),
+                "REFDCL-wif.dogwifnearhat.near|wrap.near|100".to_owned(),
+                HashMap::from_iter([
+                    (
+                        "wif.dogwifnearhat.near".parse().unwrap(),
+                        -53088858398723387736317624
+                    ),
+                    ("wrap.near".parse().unwrap(), -21808127405011745018483663),
+                ])
+            ),
+            (
+                context,
+                "REFDCL-wif.dogwifnearhat.near|wrap.near|100".to_owned(),
+                HashMap::from_iter([
+                    (
+                        "wif.dogwifnearhat.near".parse().unwrap(),
+                        -939999999999999999999995622
+                    ),
+                    ("wrap.near".parse().unwrap(), 0),
+                ])
+            ),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn doesnt_detect_refdcl_limit_orders_as_trades() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 219_513_928,
+                end_exclusive: Some(219_513_933),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    let trader = "rhealover.near".parse::<AccountId>().unwrap();
+    assert_eq!(indexer.handler.pool_swaps.get(&trader), None);
+    assert_eq!(indexer.handler.balance_change_swaps.get(&trader), None);
+}
+
+#[tokio::test]
+async fn detects_intear_plach_launch_buys_as_the_dev() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        IndexerOptions {
+            preprocess_transactions: Some(PreprocessTransactionsSettings {
+                prefetch_blocks: 0,
+                postfetch_blocks: 0,
+            }),
+            ..IndexerOptions::default_with_range(BlockRange::Range {
+                start_inclusive: 219_301_500,
+                end_exclusive: Some(219_301_511),
+            })
+        },
+    )
+    .await
+    .unwrap();
+
+    let context = TradeContext {
+        trader: "skipkon.near".parse().unwrap(),
+        block_height: 219301507,
+        block_timestamp_nanosec: 1791590831111666828,
+        transaction_id: "BiA1v9xGeR6X4otsuGL3CtsfaH9MmczJndXEjiTWvBzP"
+            .parse()
+            .unwrap(),
+        receipt_id: "Gqmb5CrGoYCWxUFMwpzqRsZD2ncLtSs4qLVCLFyrxMhK"
+            .parse()
+            .unwrap(),
+    };
+    let swap = RawPoolSwap {
+        pool: "INTEARPLACH-260".to_owned(),
+        token_in: "near".parse().unwrap(),
+        token_out: "nero-1.launch-v2.intear.near".parse().unwrap(),
+        amount_in: 1000000000000000000000000,
+        amount_out: 3245432870573412967378216526988,
+        referrer: None,
+    };
+    assert_eq!(
+        indexer
+            .handler
+            .pool_swaps
+            .get(&"launch-v2.intear.near".parse::<AccountId>().unwrap()),
+        None
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"skipkon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(swap.clone(), context.clone())]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"skipkon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("near".parse().unwrap(), -1000000000000000000000000),
+                    (
+                        "nero-1.launch-v2.intear.near".parse().unwrap(),
+                        3245432870573412967378216526988
+                    ),
+                ]),
+                pool_swaps: vec![swap],
+            },
+            context,
+            None
+        )]
     );
 }

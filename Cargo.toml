@@ -4,16 +4,43 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 
+[features]
+# The Redis stream publisher and the `trade-indexer` binary that runs it
+redis = [
+    "dep:redis",
+    "dep:inevents-redis",
+    "dep:tokio",
+    "dep:simple_logger",
+    "dep:dotenvy",
+    "inindexer/neardata",
+]
+
+[[bin]]
+name = "trade-indexer"
+path = "src/main.rs"
+required-features = ["redis"]
+
 [dependencies]
-inindexer = { git = "https://github.com/INTEARnear/inindexer", features = ["neardata"] }
-async-trait = "0.1.80"
-tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
-log = "0.4.21"
-simple_logger = "5.0.0"
-serde = { version = "1.0.199", features = ["derive"] }
-serde_json = "1.0.116"
-borsh = "1.5.1"
-dotenv = "0.15.0"
-redis = { version = "0.25.3", features = [ "tokio-rustls-comp", "connection-manager" ] }
-inevents-redis = { git = "https://github.com/INTEARnear/inevents" }
+inindexer = { git = "https://github.com/INTEARnear/inindexer" }
+async-trait = "0.1"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+borsh = { version = "1", features = ["derive"] }
 intear-events = { git = "https://github.com/INTEARnear/intear-events" }
+intear-dex-types = { git = "https://github.com/INTEARnear/dex", features = ["json"] }
+xyk-dex-types = { git = "https://github.com/INTEARnear/dex" }
+# The dex types are near-sdk types, which only build outside of a contract with this
+near-sdk = { version = "5", default-features = false, features = ["non-contract-usage"] }
+base64 = "0.23"
+lz4_flex = "0.14"
+
+redis = { version = "0.25", features = ["tokio-rustls-comp", "connection-manager"], optional = true }
+inevents-redis = { git = "https://github.com/INTEARnear/inevents", optional = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"], optional = true }
+simple_logger = { version = "5", optional = true }
+dotenvy = { version = "0.15", optional = true }
+
+[dev-dependencies]
+inindexer = { git = "https://github.com/INTEARnear/inindexer", features = ["neardata"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
