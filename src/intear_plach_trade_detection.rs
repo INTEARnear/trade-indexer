@@ -91,12 +91,20 @@ pub async fn detect(
                 receipt_id: receipt.receipt.receipt.receipt_id,
             };
 
-            let event = serde_json::from_value::<XykDexEvent>(event).unwrap_or_else(|err| {
-                panic!(
-                    "Couldn't parse plach event in receipt {}: {err}",
-                    receipt.receipt.receipt.receipt_id
-                );
-            });
+            let event = match serde_json::from_value::<XykDexEvent>(event) {
+                Ok(event) => event,
+                Err(err) => {
+                    if block.block.header.height > 187015239 {
+                        panic!(
+                            "Couldn't parse plach event in receipt {}: {err}",
+                            receipt.receipt.receipt.receipt_id
+                        );
+                    } else {
+                        // old contract, mainly testing
+                        continue;
+                    }
+                }
+            };
 
             match event {
                 XykDexEvent::Swap {
