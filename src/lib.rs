@@ -4,10 +4,11 @@ use aidols_trade_detection::AIDOLS_CONTRACT_ID;
 use async_trait::async_trait;
 use borsh::BorshDeserialize;
 use inindexer::near_utils::FtBalance;
+use inindexer::transaction_trees::TransactionTree;
 use inindexer::{
-    IncompleteTransaction, Indexer, TransactionReceipt,
+    Indexer, IndexerExecutionOutcomeWithReceipt, StreamerMessage,
     near_indexer_primitives::{
-        CryptoHash, StreamerMessage,
+        CryptoHash,
         types::{AccountId, BlockHeight},
         views::{StateChangeCauseView, StateChangeValueView},
     },
@@ -16,6 +17,7 @@ use intear_events::events::trade::trade_pool_change::{AidolsPool, IntearPlachPoo
 use ref_trade_detection::{REF_CONTRACT_ID, TESTNET_REF_CONTRACT_ID};
 use refdcl_trade_detection::REFDCL_CONTRACT_ID;
 
+pub mod aggregatedex;
 pub mod aidols_state;
 pub mod aidols_trade_detection;
 pub mod intear_plach_trade_detection;
@@ -102,28 +104,31 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                         }
                         let pool_id = u64::from_le_bytes(without_prefix.try_into().unwrap());
                         log::debug!("Pool changed: {pool_id}");
-                        if let Ok(pool) = <ref_finance_state::Pool as BorshDeserialize>::deserialize(
-                            &mut value.as_slice(),
-                        ) {
-                            if pool_id > 420_000 {
-                                log::warn!(
-                                    "Pool ID too high, probably a bug: {pool_id}. If Ref actually has that many pools, increase the number in {}:{} to a reasonable amount",
-                                    file!(),
-                                    line!() - 1
-                                );
-                                continue;
-                            }
-
-                            let pool = PoolChangeEvent {
-                                pool_id: ref_trade_detection::create_ref_pool_id(pool_id),
-                                receipt_id: *receipt_id,
-                                block_timestamp_nanosec: block.block.header.timestamp_nanosec
-                                    as u128,
-                                block_height: block.block.header.height,
-                                pool: PoolType::Ref(pool),
-                            };
-                            self.handler.on_pool_change(pool).await;
+                        // A layout this doesn't know would leave the pool's price behind for good
+                        let pool = borsh::from_slice::<ref_finance_state::Pool>(value.as_slice())
+                            .map_err(|err| {
+                            format!(
+                                "Ref pool {pool_id} in block {} doesn't decode: {err}",
+                                block.block.header.height
+                            )
+                        })?;
+                        if pool_id > 420_000 {
+                            log::warn!(
+                                "Pool ID too high, probably a bug: {pool_id}. If Ref actually has that many pools, increase the number in {}:{} to a reasonable amount",
+                                file!(),
+                                line!() - 1
+                            );
+                            continue;
                         }
+
+                        let pool = PoolChangeEvent {
+                            pool_id: ref_trade_detection::create_ref_pool_id(pool_id),
+                            receipt_id: *receipt_id,
+                            block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
+                            block_height: block.block.header.height,
+                            pool: PoolType::Ref(pool),
+                        };
+                        self.handler.on_pool_change(pool).await;
                     } else if account_id == AIDOLS_CONTRACT_ID && !self.is_testnet {
                         let receipt_id =
                             if let StateChangeCauseView::ReceiptProcessing { receipt_hash } =
@@ -151,30 +156,31 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                             continue;
                         };
                         log::debug!("Pool changed: {token_id}");
-                        if let Ok(pool) =
-                            <aidols_state::AidolsPoolState as BorshDeserialize>::deserialize(
-                                &mut value.as_slice(),
+                        let pool = borsh::from_slice::<aidols_state::AidolsPoolState>(
+                            value.as_slice(),
+                        )
+                        .map_err(|err| {
+                            format!(
+                                "Aidols pool of {token_id} in block {} doesn't decode: {err}",
+                                block.block.header.height
                             )
-                        {
-                            self.handler
-                                .on_pool_change(PoolChangeEvent {
-                                    pool_id: aidols_trade_detection::create_aidols_pool_id(
-                                        &token_id,
-                                    ),
-                                    receipt_id: *receipt_id,
-                                    block_timestamp_nanosec: block.block.header.timestamp_nanosec
-                                        as u128,
-                                    block_height: block.block.header.height,
-                                    pool: PoolType::Aidols(AidolsPool {
-                                        token_id: token_id.clone(),
-                                        token_hold: pool.token_hold,
-                                        wnear_hold: pool.wnear_hold,
-                                        is_deployed: pool.is_deployed,
-                                        is_tradable: pool.is_tradable,
-                                    }),
-                                })
-                                .await;
-                        }
+                        })?;
+                        self.handler
+                            .on_pool_change(PoolChangeEvent {
+                                pool_id: aidols_trade_detection::create_aidols_pool_id(&token_id),
+                                receipt_id: *receipt_id,
+                                block_timestamp_nanosec: block.block.header.timestamp_nanosec
+                                    as u128,
+                                block_height: block.block.header.height,
+                                pool: PoolType::Aidols(AidolsPool {
+                                    token_id: token_id.clone(),
+                                    token_hold: pool.token_hold,
+                                    wnear_hold: pool.wnear_hold,
+                                    is_deployed: pool.is_deployed,
+                                    is_tradable: pool.is_tradable,
+                                }),
+                            })
+                            .await;
                     } else if account_id == REFDCL_CONTRACT_ID && !self.is_testnet {
                         let receipt_id =
                             if let StateChangeCauseView::ReceiptProcessing { receipt_hash } =
@@ -194,17 +200,22 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                         if key.len() != 10 || !key.starts_with(&[0x01, b'v']) {
                             continue;
                         }
-                        let Ok(pool) =
+                        // Only the record's leading fields are read
+                        let pool =
                             <refdcl_state::RefDclPoolPrefix as BorshDeserialize>::deserialize(
                                 &mut value.as_slice(),
                             )
-                        else {
-                            log::warn!("Invalid DCL pool record: {:02x?}", key);
-                            continue;
-                        };
+                            .map_err(|err| {
+                                format!(
+                                    "DCL pool record {key:02x?} in block {} doesn't decode: {err}",
+                                    block.block.header.height
+                                )
+                            })?;
                         if pool.version > 1 {
-                            log::warn!("Unknown DCL pool record version: {}", pool.version);
-                            continue;
+                            return Err(format!(
+                                "DCL pool {} in block {} has a record version this doesn't know: {}",
+                                pool.pool_id, block.block.header.height, pool.version
+                            ));
                         }
                         let (Ok(token_x), Ok(token_y)) = (
                             pool.token_x.parse::<AccountId>(),
@@ -243,12 +254,15 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
         Ok(())
     }
 
-    async fn on_receipt(
+    async fn process_receipt(
         &mut self,
-        receipt: &TransactionReceipt,
-        transaction: &IncompleteTransaction,
+        receipt: &IndexerExecutionOutcomeWithReceipt,
+        transaction: &TransactionTree,
         block: &StreamerMessage,
     ) -> Result<(), Self::Error> {
+        let receipt = transaction
+            .receipt(&receipt.receipt.receipt_id)
+            .expect("The tree has the receipts of the block it comes with");
         ref_trade_detection::detect(
             receipt,
             transaction,
@@ -406,22 +420,4 @@ pub enum PoolType {
     Aidols(AidolsPool),
     IntearPlach(IntearPlachPool),
     RefDcl(RefDclPool),
-}
-
-pub(crate) fn find_parent_receipt<'a>(
-    transaction: &'a IncompleteTransaction,
-    receipt: &TransactionReceipt,
-) -> Option<&'a TransactionReceipt> {
-    transaction.receipts.iter().find_map(|r| {
-        if let Some(r) = r.1
-            && r.receipt
-                .execution_outcome
-                .outcome
-                .receipt_ids
-                .contains(&receipt.receipt.receipt.receipt_id)
-        {
-            return Some(r);
-        }
-        None
-    })
 }

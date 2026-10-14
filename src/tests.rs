@@ -9,10 +9,7 @@ use intear_events::events::trade::trade_pool_change::{
 };
 use std::collections::HashMap;
 
-use inindexer::{
-    IndexerOptions, PreprocessTransactionsSettings, near_indexer_primitives::types::AccountId,
-    run_indexer,
-};
+use inindexer::{IndexerOptions, near_indexer_primitives::types::AccountId, run_indexer};
 
 use crate::{
     BalanceChangeSwap, LiquidityChange, LiquidityChangeKind, PoolChangeEvent, PoolId, PoolType,
@@ -46,6 +43,16 @@ fn provider() -> ParallelProviderStreamer<OldNeardataProvider> {
         ),
         4,
     )
+}
+
+/// The trees also read the blocks just before the range, which have the transactions of the
+/// receipts at its start. In the congestion of early 2024, gas refunds came up to 30 blocks after
+/// their transactions.
+fn options(range: BlockRange) -> IndexerOptions {
+    IndexerOptions {
+        warm_up_blocks: 50,
+        ..IndexerOptions::default_with_range(range)
+    }
 }
 
 #[async_trait]
@@ -101,16 +108,10 @@ async fn detects_ref_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 176281650,
-                end_exclusive: Some(176281660),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 176281650,
+            end_exclusive: Some(176281660),
+        }),
     )
     .await
     .unwrap();
@@ -199,16 +200,10 @@ async fn detects_ref_multistep_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 118_214_454,
-                end_exclusive: Some(118_214_461),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 118_214_454,
+            end_exclusive: Some(118_214_461),
+        }),
     )
     .await
     .unwrap();
@@ -353,16 +348,10 @@ async fn detects_ref_tearbot_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 176281537,
-                end_exclusive: Some(176281542),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 176281537,
+            end_exclusive: Some(176281542),
+        }),
     )
     .await
     .unwrap();
@@ -631,16 +620,10 @@ async fn detects_ref_arbitrage_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 118_212_504,
-                end_exclusive: Some(118_212_506),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 118_212_504,
+            end_exclusive: Some(118_212_506),
+        }),
     )
     .await
     .unwrap();
@@ -840,16 +823,10 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 118_214_071,
-                end_exclusive: Some(118_214_073),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 118_214_071,
+            end_exclusive: Some(118_214_073),
+        }),
     )
     .await
     .unwrap();
@@ -880,16 +857,10 @@ async fn doesnt_detect_failed_ref_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 112_087_639,
-                end_exclusive: Some(112_087_643),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 112_087_639,
+            end_exclusive: Some(112_087_643),
+        }),
     )
     .await
     .unwrap();
@@ -920,16 +891,10 @@ async fn detects_delegate_ref_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 115_224_414,
-                end_exclusive: Some(115_224_420),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 115_224_414,
+            end_exclusive: Some(115_224_420),
+        }),
     )
     .await
     .unwrap();
@@ -1074,16 +1039,10 @@ async fn detects_ref_state_changes() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 118_210_089,
-                end_exclusive: Some(118_210_094),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 118_210_089,
+            end_exclusive: Some(118_210_094),
+        }),
     )
     .await
     .unwrap();
@@ -1135,16 +1094,10 @@ async fn detects_ref_hot_tg_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 124_427_306,
-                end_exclusive: Some(124_427_323),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 124_427_306,
+            end_exclusive: Some(124_427_323),
+        }),
     )
     .await
     .unwrap();
@@ -1257,16 +1210,10 @@ async fn detects_ref_liquidity_add() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 129_352_974,
-                end_exclusive: Some(129_352_978),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 129_352_974,
+            end_exclusive: Some(129_352_978),
+        }),
     )
     .await
     .unwrap();
@@ -1332,16 +1279,10 @@ async fn detects_ref_liquidity_remove() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 129_364_250,
-                end_exclusive: Some(129_364_254),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 129_364_250,
+            end_exclusive: Some(129_364_254),
+        }),
     )
     .await
     .unwrap();
@@ -1407,16 +1348,10 @@ async fn detects_ref_swap_by_output() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 131_092_276,
-                end_exclusive: Some(131_092_280),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 131_092_276,
+            end_exclusive: Some(131_092_280),
+        }),
     )
     .await
     .unwrap();
@@ -1499,16 +1434,10 @@ async fn detects_ref_swap_by_output_transfer() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 142_760_523,
-                end_exclusive: Some(142_760_532),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 142_760_523,
+            end_exclusive: Some(142_760_532),
+        }),
     )
     .await
     .unwrap();
@@ -1603,16 +1532,10 @@ async fn detects_aidols_buy() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 176287820,
-                end_exclusive: Some(176287830),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 176287820,
+            end_exclusive: Some(176287830),
+        }),
     )
     .await
     .unwrap();
@@ -1703,16 +1626,10 @@ async fn detects_aidols_sell() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 137409038,
-                end_exclusive: Some(137409042),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 137409038,
+            end_exclusive: Some(137409042),
+        }),
     )
     .await
     .unwrap();
@@ -1796,16 +1713,10 @@ async fn detects_aidols_state_changes() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 137406979,
-                end_exclusive: Some(137406984),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 137406979,
+            end_exclusive: Some(137406984),
+        }),
     )
     .await
     .unwrap();
@@ -1839,16 +1750,10 @@ async fn detects_refdcl_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 143_270_323,
-                end_exclusive: Some(143_270_329),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 143_270_323,
+            end_exclusive: Some(143_270_329),
+        }),
     )
     .await
     .unwrap();
@@ -1923,16 +1828,10 @@ async fn detects_refdcl_swap_by_output_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 217_682_326,
-                end_exclusive: Some(217_682_332),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 217_682_326,
+            end_exclusive: Some(217_682_332),
+        }),
     )
     .await
     .unwrap();
@@ -2042,16 +1941,10 @@ async fn detects_refdcl_pool_state_changes() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 217_682_328,
-                end_exclusive: Some(217_682_329),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 217_682_328,
+            end_exclusive: Some(217_682_329),
+        }),
     )
     .await
     .unwrap();
@@ -2112,16 +2005,10 @@ async fn detects_refdcl_v1_pool_state_changes() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 218_324_945,
-                end_exclusive: Some(218_324_946),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 218_324_945,
+            end_exclusive: Some(218_324_946),
+        }),
     )
     .await
     .unwrap();
@@ -2182,16 +2069,10 @@ async fn detects_ref_degen_pool_state_changes() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 150_611_257,
-                end_exclusive: Some(150_611_259),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 150_611_257,
+            end_exclusive: Some(150_611_259),
+        }),
     )
     .await
     .unwrap();
@@ -2287,16 +2168,10 @@ async fn detects_intear_plach_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 183_810_119,
-                end_exclusive: Some(183_810_123),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 183_810_119,
+            end_exclusive: Some(183_810_123),
+        }),
     )
     .await
     .unwrap();
@@ -2379,16 +2254,10 @@ async fn detects_intear_plach_pool_state_changes() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 219_301_500,
-                end_exclusive: Some(219_301_511),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 219_301_500,
+            end_exclusive: Some(219_301_511),
+        }),
     )
     .await
     .unwrap();
@@ -2445,16 +2314,10 @@ async fn detects_intear_plach_liquidity_add() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 184_680_178,
-                end_exclusive: Some(184_680_182),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 184_680_178,
+            end_exclusive: Some(184_680_182),
+        }),
     )
     .await
     .unwrap();
@@ -2502,16 +2365,10 @@ async fn detects_intear_plach_liquidity_remove() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 184_680_720,
-                end_exclusive: Some(184_680_724),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 184_680_720,
+            end_exclusive: Some(184_680_724),
+        }),
     )
     .await
     .unwrap();
@@ -2559,16 +2416,10 @@ async fn detects_aggregatedex_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 216_110_630,
-                end_exclusive: Some(216_110_660),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 216_110_630,
+            end_exclusive: Some(216_110_660),
+        }),
     )
     .await
     .unwrap();
@@ -2610,7 +2461,7 @@ async fn detects_aggregatedex_trades() {
                     token_out: "token.lonkingnearbackto2024.near".parse().unwrap(),
                     amount_in: 166180759515527998936891466,
                     amount_out: 318958630231220771,
-                    referrer: Some("onebot.near".parse().unwrap()),
+                    referrer: None,
                 },
                 TradeContext {
                     trader: "t-rexcoochie.near".parse().unwrap(),
@@ -2689,7 +2540,7 @@ async fn detects_aggregatedex_trades() {
                         token_out: "token.lonkingnearbackto2024.near".parse().unwrap(),
                         amount_in: 166180759515527998936891466,
                         amount_out: 318958630231220771,
-                        referrer: Some("onebot.near".parse().unwrap()),
+                        referrer: None,
                     }],
                 },
                 TradeContext {
@@ -2703,7 +2554,7 @@ async fn detects_aggregatedex_trades() {
                         .parse()
                         .unwrap(),
                 },
-                Some("onebot.near".to_string()),
+                None,
             ),
         ]
     );
@@ -2719,16 +2570,10 @@ async fn detects_refdcl_liquidity_add() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 218_422_765,
-                end_exclusive: Some(218_422_769),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 218_422_765,
+            end_exclusive: Some(218_422_769),
+        }),
     )
     .await
     .unwrap();
@@ -2783,16 +2628,10 @@ async fn doesnt_detect_refdcl_fee_claims_as_liquidity_remove() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 218_422_810,
-                end_exclusive: Some(218_422_814),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 218_422_810,
+            end_exclusive: Some(218_422_814),
+        }),
     )
     .await
     .unwrap();
@@ -2811,16 +2650,10 @@ async fn detects_refdcl_liquidity_remove() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 218_404_295,
-                end_exclusive: Some(218_404_299),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 218_404_295,
+            end_exclusive: Some(218_404_299),
+        }),
     )
     .await
     .unwrap();
@@ -2904,16 +2737,10 @@ async fn doesnt_detect_refdcl_limit_orders_as_trades() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 219_513_928,
-                end_exclusive: Some(219_513_933),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 219_513_928,
+            end_exclusive: Some(219_513_933),
+        }),
     )
     .await
     .unwrap();
@@ -2933,16 +2760,10 @@ async fn detects_intear_plach_launch_buys_as_the_dev() {
     run_indexer(
         &mut indexer,
         provider(),
-        IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: 0,
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(BlockRange::Range {
-                start_inclusive: 219_301_500,
-                end_exclusive: Some(219_301_511),
-            })
-        },
+        options(BlockRange::Range {
+            start_inclusive: 219_301_500,
+            end_exclusive: Some(219_301_511),
+        }),
     )
     .await
     .unwrap();
@@ -3001,5 +2822,94 @@ async fn detects_intear_plach_launch_buys_as_the_dev() {
             context,
             None
         )]
+    );
+}
+
+#[tokio::test]
+async fn detects_aggregatedex_referrer() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        options(BlockRange::Range {
+            start_inclusive: 219_924_060,
+            end_exclusive: Some(219_924_073),
+        }),
+    )
+    .await
+    .unwrap();
+
+    let context = TradeContext {
+        trader: "drmlt.near".parse().unwrap(),
+        block_height: 219924064,
+        block_timestamp_nanosec: 1791972139427046421,
+        transaction_id: "CeQh8e4xaHdFVBe4xW1UXNi6Z4VRdnVSwmhKcBou4LQA"
+            .parse()
+            .unwrap(),
+        receipt_id: "1VvhwCt6oHChBLw8rQUD6QNGJrUWHcz4upUDq1DoZeU"
+            .parse()
+            .unwrap(),
+    };
+    let first_swap = RawPoolSwap {
+        pool: "REFDCL-qtc.omft.near|yuvi-6c041e37.qlyphs.near|2000".to_owned(),
+        token_in: "yuvi-6c041e37.qlyphs.near".parse().unwrap(),
+        token_out: "qtc.omft.near".parse().unwrap(),
+        amount_in: 21000,
+        amount_out: 716316599150,
+        referrer: Some("stardrof1.near".parse().unwrap()),
+    };
+    let second_swap = RawPoolSwap {
+        pool: "REFDCL-qtc.omft.near|wrap.near|10000".to_owned(),
+        token_in: "qtc.omft.near".parse().unwrap(),
+        token_out: "wrap.near".parse().unwrap(),
+        amount_in: 716316599150,
+        amount_out: 17455168504293328338263287,
+        referrer: Some("stardrof1.near".parse().unwrap()),
+    };
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"drmlt.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![
+            (first_swap.clone(), context.clone()),
+            (second_swap.clone(), context.clone()),
+        ]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"drmlt.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![
+            (
+                BalanceChangeSwap {
+                    balance_changes: HashMap::from_iter([
+                        ("yuvi-6c041e37.qlyphs.near".parse().unwrap(), -21000),
+                        ("qtc.omft.near".parse().unwrap(), 716316599150),
+                    ]),
+                    pool_swaps: vec![first_swap],
+                },
+                context.clone(),
+                Some("stardrof1.near".to_string()),
+            ),
+            (
+                BalanceChangeSwap {
+                    balance_changes: HashMap::from_iter([
+                        ("qtc.omft.near".parse().unwrap(), -716316599150),
+                        ("wrap.near".parse().unwrap(), 17455168504293328338263287),
+                    ]),
+                    pool_swaps: vec![second_swap],
+                },
+                context,
+                Some("stardrof1.near".to_string()),
+            ),
+        ]
     );
 }

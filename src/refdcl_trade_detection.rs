@@ -1,15 +1,17 @@
 use inindexer::near_indexer_primitives::views::{ActionView, ReceiptEnumView};
-use inindexer::near_utils::{EventLogData, FtBalance};
+use inindexer::near_utils::{EventLogData, FtBalance, is_receipt_successful};
 use inindexer::{
-    IncompleteTransaction, TransactionReceipt,
-    near_indexer_primitives::{StreamerMessage, types::AccountId},
+    StreamerMessage,
+    near_indexer_primitives::types::AccountId,
     near_utils::dec_format,
+    transaction_trees::{ExecutedReceipt, TransactionTree},
 };
 use serde::Deserialize;
 
 use crate::{
     BalanceChangeSwap, LiquidityChangeKind, PoolId, RawPoolSwap, TradeContext, TradeEventHandler,
-    find_parent_receipt, report_liquidity,
+    aggregatedex::{AGGREGATEDEX_CONTRACT_ID, aggregatedex_trade},
+    report_liquidity,
 };
 
 pub const REFDCL_CONTRACT_ID: &str = "dclv2.ref-labs.near";
@@ -83,8 +85,8 @@ enum TokenReceiverMessage {
 }
 
 pub async fn detect(
-    receipt: &TransactionReceipt,
-    transaction: &IncompleteTransaction,
+    receipt: &ExecutedReceipt,
+    transaction: &TransactionTree,
     block: &StreamerMessage,
     handler: &mut impl TradeEventHandler,
     is_testnet: bool,
@@ -93,7 +95,7 @@ pub async fn detect(
         // CA is unknown on testnet
         return;
     }
-    if receipt.is_successful(false)
+    if is_receipt_successful(&receipt.receipt) == Some(true)
         && receipt.receipt.receipt.receiver_id == REFDCL_CONTRACT_ID
         && let ReceiptEnumView::Action { actions, .. } = &receipt.receipt.receipt.receipt
     {
@@ -125,27 +127,11 @@ pub async fn detect(
                     if swap.amount_in == 0 && swap.amount_out == 0 {
                         continue;
                     }
-                    let mut trader = swap.swapper;
-                    if trader == "aggregatedex.near" {
-                        let mut last_transfer_call = receipt;
-                        let mut last_parent = receipt;
-                        while let Some(parent) = find_parent_receipt(transaction, last_parent) {
-                            last_parent = parent;
-                            if let ReceiptEnumView::Action { actions, .. } =
-                                &parent.receipt.receipt.receipt
-                                && actions.iter().any(|a| {
-                                    matches!(
-                                        a,
-                                        ActionView::FunctionCall { method_name, .. }
-                                            if method_name == "ft_transfer_call"
-                                    )
-                                })
-                            {
-                                last_transfer_call = parent;
-                            }
-                        }
-                        trader = last_transfer_call.receipt.receipt.predecessor_id.clone();
-                    }
+                    let (trader, referrer) = if swap.swapper == AGGREGATEDEX_CONTRACT_ID {
+                        aggregatedex_trade(receipt, transaction)
+                    } else {
+                        (swap.swapper, referrer.clone())
+                    };
                     let context = TradeContext {
                         trader,
                         block_height: block.block.header.height,

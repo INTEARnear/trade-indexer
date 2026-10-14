@@ -1,26 +1,27 @@
-use inindexer::near_utils::dec_format_vec;
+use inindexer::near_utils::{dec_format_vec, is_receipt_successful};
 use inindexer::{
-    IncompleteTransaction, TransactionReceipt,
+    StreamerMessage,
     near_indexer_primitives::{
-        StreamerMessage,
         types::AccountId,
         views::{ActionView, ReceiptEnumView},
     },
     near_utils::{FtBalance, dec_format},
+    transaction_trees::{ExecutedReceipt, TransactionTree},
 };
 use serde::Deserialize;
 
 use crate::{
     BalanceChangeSwap, LiquidityChangeKind, PoolId, RawPoolSwap, TradeContext, TradeEventHandler,
-    find_parent_receipt, report_liquidity,
+    aggregatedex::{AGGREGATEDEX_CONTRACT_ID, aggregatedex_trade},
+    report_liquidity,
 };
 
 pub const TESTNET_REF_CONTRACT_ID: &str = "ref-finance-101.testnet";
 pub const REF_CONTRACT_ID: &str = "v2.ref-finance.near";
 
 pub async fn detect(
-    receipt: &TransactionReceipt,
-    transaction: &IncompleteTransaction,
+    receipt: &ExecutedReceipt,
+    transaction: &TransactionTree,
     block: &StreamerMessage,
     handler: &mut impl TradeEventHandler,
     is_testnet: bool,
@@ -30,7 +31,9 @@ pub async fn detect(
     } else {
         REF_CONTRACT_ID
     };
-    if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == ref_contract_id {
+    if is_receipt_successful(&receipt.receipt) == Some(true)
+        && receipt.receipt.receipt.receiver_id == ref_contract_id
+    {
         let mut trader = receipt.receipt.receipt.predecessor_id.clone();
         let mut swap_action_pools = vec![];
         let mut referrer = None;
@@ -42,17 +45,8 @@ pub async fn detect(
                 } = action
                 {
                     if method_name == "ft_on_transfer" {
-                        if let Some(caller_receipt) = transaction
-                            .receipts
-                            .values()
-                            .filter_map(|r| r.as_ref())
-                            .find(|r| {
-                                r.receipt
-                                    .execution_outcome
-                                    .outcome
-                                    .receipt_ids
-                                    .contains(&receipt.receipt.receipt.receipt_id)
-                            })
+                        if let Some(caller_receipt) =
+                            transaction.parent(&receipt.receipt.receipt.receipt_id)
                         {
                             trader = caller_receipt.receipt.receipt.predecessor_id.clone();
                         }
@@ -158,43 +152,23 @@ pub async fn detect(
         }
 
         if trader == "ref.hot.tg" {
-            if let Some(receipt) = find_parent_receipt(transaction, receipt) {
-                if let Some(receipt) = find_parent_receipt(transaction, receipt) {
-                    trader = receipt.receipt.receipt.predecessor_id.clone();
-                } else {
-                    log::warn!(
-                        "Could not find the parent receipt of the parent receipt of the ref.hot.tg trade {:?}",
-                        transaction.transaction.transaction.hash
-                    );
-                    return;
-                }
+            if let Some(grandparent) = transaction
+                .ancestors(&receipt.receipt.receipt.receipt_id)
+                .nth(1)
+            {
+                trader = grandparent.receipt.receipt.predecessor_id.clone();
             } else {
                 log::warn!(
-                    "Could not find the parent receipt of the ref.hot.tg trade {:?}",
+                    "Could not find the grandparent receipt of the ref.hot.tg trade {:?}",
                     transaction.transaction.transaction.hash
                 );
                 return;
             }
         }
 
-        if trader == "aggregatedex.near" {
-            let mut last_transfer_call = receipt;
-            let mut last_parent = receipt;
-            while let Some(parent) = find_parent_receipt(transaction, last_parent) {
-                last_parent = parent;
-                if let ReceiptEnumView::Action { actions, .. } = &parent.receipt.receipt.receipt
-                    && actions.iter().any(|a| {
-                        matches!(
-                            a,
-                            ActionView::FunctionCall { method_name, .. }
-                                if method_name == "ft_transfer_call"
-                        )
-                    })
-                {
-                    last_transfer_call = parent;
-                }
-            }
-            trader = last_transfer_call.receipt.receipt.predecessor_id.clone();
+        // aggregatedex.near passes Ref its own referral, rather than its user's
+        if trader == AGGREGATEDEX_CONTRACT_ID {
+            (trader, referrer) = aggregatedex_trade(receipt, transaction);
         }
 
         let context = TradeContext {

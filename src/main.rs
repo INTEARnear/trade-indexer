@@ -3,9 +3,9 @@ mod redis_handler;
 use redis_handler::PushToRedisStream;
 
 use inindexer::neardata::NeardataProvider;
-use inindexer::{
-    AutoContinue, BlockRange, IndexerOptions, PreprocessTransactionsSettings, run_indexer,
-};
+use inindexer::redb_storage::RedbStorage;
+use inindexer::storage::IndexerStorage;
+use inindexer::{AutoContinue, BlockRange, IndexerOptions, run_indexer};
 use redis::aio::ConnectionManager;
 
 #[tokio::main]
@@ -30,36 +30,40 @@ async fn main() {
 
     let streamer = NeardataProvider::testnet();
 
+    // A debugging range runs on its own, so it keeps nothing between runs
+    let (range, storage): (_, Option<Box<dyn IndexerStorage>>) = if std::env::args().len() > 1 {
+        let msg = "Usage: `indexer` or `indexer [start-block] [end-block]`";
+        let range = BlockRange::Range {
+            start_inclusive: std::env::args()
+                .nth(1)
+                .expect(msg)
+                .replace(['_', ',', ' ', '.'], "")
+                .parse()
+                .expect(msg),
+            end_exclusive: Some(
+                std::env::args()
+                    .nth(2)
+                    .expect(msg)
+                    .replace(['_', ',', ' ', '.'], "")
+                    .parse()
+                    .expect(msg),
+            ),
+        };
+        (range, None)
+    } else {
+        (
+            BlockRange::AutoContinue(AutoContinue::default()),
+            Some(Box::new(RedbStorage::new("transaction-trees.redb"))),
+        )
+    };
+
     run_indexer(
         &mut indexer,
         streamer,
         IndexerOptions {
-            preprocess_transactions: Some(PreprocessTransactionsSettings {
-                prefetch_blocks: if cfg!(debug_assertions) { 0 } else { 100 },
-                postfetch_blocks: 0,
-            }),
-            ..IndexerOptions::default_with_range(if std::env::args().len() > 1 {
-                // For debugging
-                let msg = "Usage: `indexer` or `indexer [start-block] [end-block]`";
-                BlockRange::Range {
-                    start_inclusive: std::env::args()
-                        .nth(1)
-                        .expect(msg)
-                        .replace(['_', ',', ' ', '.'], "")
-                        .parse()
-                        .expect(msg),
-                    end_exclusive: Some(
-                        std::env::args()
-                            .nth(2)
-                            .expect(msg)
-                            .replace(['_', ',', ' ', '.'], "")
-                            .parse()
-                            .expect(msg),
-                    ),
-                }
-            } else {
-                BlockRange::AutoContinue(AutoContinue::default())
-            })
+            storage,
+            warm_up_blocks: 100,
+            ..IndexerOptions::default_with_range(range)
         },
     )
     .await

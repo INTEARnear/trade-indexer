@@ -13,6 +13,7 @@ redis = [
     "dep:simple_logger",
     "dep:dotenvy",
     "inindexer/neardata",
+    "inindexer/redb",
 ]
 
 [[bin]]

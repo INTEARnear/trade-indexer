@@ -1,8 +1,9 @@
-use inindexer::near_utils::EventLogData;
+use inindexer::near_utils::{EventLogData, is_receipt_successful};
 use inindexer::{
-    IncompleteTransaction, TransactionReceipt,
-    near_indexer_primitives::{StreamerMessage, types::AccountId},
+    StreamerMessage,
+    near_indexer_primitives::types::AccountId,
     near_utils::{FtBalance, dec_format},
+    transaction_trees::{ExecutedReceipt, TransactionTree},
 };
 use serde::Deserialize;
 
@@ -30,8 +31,8 @@ struct SwapEvent {
 }
 
 pub async fn detect(
-    receipt: &TransactionReceipt,
-    transaction: &IncompleteTransaction,
+    receipt: &ExecutedReceipt,
+    transaction: &TransactionTree,
     block: &StreamerMessage,
     handler: &mut impl TradeEventHandler,
     is_testnet: bool,
@@ -39,7 +40,9 @@ pub async fn detect(
     if is_testnet {
         return;
     }
-    if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == AIDOLS_CONTRACT_ID {
+    if is_receipt_successful(&receipt.receipt) == Some(true)
+        && receipt.receipt.receipt.receiver_id == AIDOLS_CONTRACT_ID
+    {
         for log in &receipt.receipt.execution_outcome.outcome.logs {
             if let Ok(event) = EventLogData::<Vec<SwapEvent>>::deserialize(log)
                 && event.event == "token_swap"

@@ -1,9 +1,10 @@
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use inindexer::near_indexer_primitives::types::AccountId;
-use inindexer::near_utils::EventLogData;
+use inindexer::near_utils::{EventLogData, is_receipt_successful};
 use inindexer::{
-    IncompleteTransaction, TransactionReceipt, near_indexer_primitives::StreamerMessage,
+    StreamerMessage,
+    transaction_trees::{ExecutedReceipt, TransactionTree},
 };
 use intear_dex_types::{AssetId, DexEventData, IntearDexEvent};
 use intear_events::events::trade::trade_pool_change::{
@@ -14,7 +15,7 @@ use xyk_dex_types::{AssetWithBalance, CurrentFees, FeeReceiver, PoolView, XykDex
 
 use crate::{
     BalanceChangeSwap, LiquidityChangeKind, PoolChangeEvent, PoolId, PoolType, RawPoolSwap,
-    TradeContext, TradeEventHandler, find_parent_receipt, report_liquidity,
+    TradeContext, TradeEventHandler, report_liquidity,
 };
 
 pub const INTEAR_CONTRACT_ID: &str = "dex.intear.near";
@@ -22,8 +23,8 @@ pub const INTEAR_LAUNCH_CONTRACT_IDS: &[&str] = &["launch.intear.near", "launch-
 pub const PLACH_DEX_ID: &str = "slimedragon.near/xyk";
 
 pub async fn detect(
-    receipt: &TransactionReceipt,
-    transaction: &IncompleteTransaction,
+    receipt: &ExecutedReceipt,
+    transaction: &TransactionTree,
     block: &StreamerMessage,
     handler: &mut impl TradeEventHandler,
     is_testnet: bool,
@@ -32,7 +33,9 @@ pub async fn detect(
         // Not deployed on testnet
         return;
     }
-    if receipt.is_successful(false) && receipt.receipt.receipt.receiver_id == INTEAR_CONTRACT_ID {
+    if is_receipt_successful(&receipt.receipt) == Some(true)
+        && receipt.receipt.receipt.receiver_id == INTEAR_CONTRACT_ID
+    {
         let mut merged_pool_swaps = Vec::new();
         let mut merged_context = None;
         let mut merged_referrer = None;
@@ -116,20 +119,17 @@ pub async fn detect(
                 } => {
                     let Some(mut user) = user else { continue };
                     if INTEAR_LAUNCH_CONTRACT_IDS.contains(&user.as_str()) {
-                        let mut ancestor = receipt;
-                        loop {
-                            let Some(parent) = find_parent_receipt(transaction, ancestor) else {
-                                log::warn!(
-                                    "Could not find who called {user} for the plach swap {:?}",
-                                    transaction.transaction.transaction.hash
-                                );
-                                break;
-                            };
-                            ancestor = parent;
-                            if ancestor.receipt.receipt.receiver_id == user {
-                                user = ancestor.receipt.receipt.predecessor_id.clone();
-                                break;
+                        match transaction
+                            .ancestors(&receipt.receipt.receipt.receipt_id)
+                            .find(|ancestor| ancestor.receipt.receipt.receiver_id == user)
+                        {
+                            Some(launch_call) => {
+                                user = launch_call.receipt.receipt.predecessor_id.clone()
                             }
+                            None => log::warn!(
+                                "Could not find who called {user} for the plach swap {:?}",
+                                transaction.transaction.transaction.hash
+                            ),
                         }
                     }
                     let Some(asset_in) = nep141_or_near(request.asset_in) else {
