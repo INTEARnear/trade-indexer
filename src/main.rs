@@ -1,12 +1,9 @@
-mod redis_handler;
-
-use redis_handler::PushToRedisStream;
-
 use inindexer::neardata::NeardataProvider;
 use inindexer::redb_storage::RedbStorage;
 use inindexer::storage::IndexerStorage;
 use inindexer::{AutoContinue, BlockRange, IndexerOptions, run_indexer};
 use redis::aio::ConnectionManager;
+use trade_indexer::redis_handler::PushToRedisStream;
 
 #[tokio::main]
 async fn main() {

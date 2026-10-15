@@ -13,8 +13,9 @@ use intear_events::events::trade::trade_pool_change::{
 };
 use intear_events::events::trade::trade_swap::TradeSwapEvent;
 use redis::aio::ConnectionManager;
-use trade_indexer::ref_finance_state;
-use trade_indexer::{
+
+use crate::ref_finance_state;
+use crate::{
     BalanceChangeSwap, LiquidityChange, PoolChangeEvent, PoolType, RawPoolSwap, TradeContext,
     TradeEventHandler,
 };

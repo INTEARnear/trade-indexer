@@ -21,6 +21,8 @@ pub mod aggregatedex;
 pub mod aidols_state;
 pub mod aidols_trade_detection;
 pub mod intear_plach_trade_detection;
+#[cfg(feature = "redis")]
+pub mod redis_handler;
 pub mod ref_finance_state;
 pub mod ref_trade_detection;
 pub mod refdcl_state;
