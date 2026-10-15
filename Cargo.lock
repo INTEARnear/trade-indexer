@@ -854,6 +854,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethnum"
+version = "1.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40404c3f5f511ec4da6fe866ddf6a717c309fdbb69fbbad7b0f3edab8f2e835f"
+
+[[package]]
 name = "fastnear-neardata-fetcher"
 version = "0.37.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1529,7 +1535,7 @@ dependencies = [
 [[package]]
 name = "intear-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#8a092815571b2a9708e9c557755e634e6c99323f"
+source = "git+https://github.com/INTEARnear/dex#82a8eb5c75a73a871d5eb122fe6c885ee7e39810"
 dependencies = [
  "near-sdk",
 ]
@@ -4209,8 +4215,9 @@ dependencies = [
 [[package]]
 name = "xyk-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#8a092815571b2a9708e9c557755e634e6c99323f"
+source = "git+https://github.com/INTEARnear/dex#82a8eb5c75a73a871d5eb122fe6c885ee7e39810"
 dependencies = [
+ "ethnum",
  "intear-dex-types",
  "near-sdk",
 ]

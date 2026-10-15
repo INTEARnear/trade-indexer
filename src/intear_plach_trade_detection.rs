@@ -6,12 +6,15 @@ use inindexer::{
     StreamerMessage,
     transaction_trees::{ExecutedReceipt, TransactionTree},
 };
-use intear_dex_types::{AssetId, DexEventData, IntearDexEvent};
+use intear_dex_types::{AssetId, DexEventData, DexId, IntearDexEvent};
 use intear_events::events::trade::trade_pool_change::{
     IntearAssetId, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachFeeReceiver,
     IntearPlachPool,
 };
-use xyk_dex_types::{AssetWithBalance, CurrentFees, FeeReceiver, PoolView, XykDexEvent};
+use serde::Deserialize;
+use xyk_dex_types::{
+    AssetWithBalance, CurrentFees, FeeReceiver, PoolView, XykDexEvent, XykDexEventV1,
+};
 
 use crate::{
     BalanceChangeSwap, LiquidityChangeKind, PoolChangeEvent, PoolId, PoolType, RawPoolSwap,
@@ -21,6 +24,17 @@ use crate::{
 pub const INTEAR_CONTRACT_ID: &str = "dex.intear.near";
 pub const INTEAR_LAUNCH_CONTRACT_IDS: &[&str] = &["launch.intear.near", "launch-v2.intear.near"];
 pub const PLACH_DEX_ID: &str = "slimedragon.near/xyk";
+
+/// The dex events of a `dex_events_borsh` log: base64 of an lz4 block prefixed with its
+/// uncompressed length, of the borsh of the events
+fn decode_borsh_dex_events(encoded: &str) -> Result<Vec<DexEventData>, String> {
+    let compressed = BASE64_STANDARD
+        .decode(encoded)
+        .map_err(|err| err.to_string())?;
+    let decompressed =
+        lz4_flex::decompress_size_prepended(&compressed).map_err(|err| err.to_string())?;
+    near_sdk::borsh::from_slice(&decompressed).map_err(|err| err.to_string())
+}
 
 pub async fn detect(
     receipt: &ExecutedReceipt,
@@ -40,48 +54,74 @@ pub async fn detect(
         let mut merged_context = None;
         let mut merged_referrer = None;
 
-        let dex_events = receipt
+        enum LoggedDexEvent {
+            Borsh(Vec<u8>),
+            // parsed later, in order to panic if not parseable
+            Json(serde_json::Value),
+        }
+        struct LoggedDexEventData {
+            dex_id: DexId,
+            event: LoggedDexEvent,
+            referrer: Option<AccountId>,
+            user: Option<AccountId>,
+        }
+
+        #[derive(Deserialize)]
+        struct OldJsonDexEventData {
+            dex_id: DexId,
+            event: serde_json::Value,
+            referrer: Option<AccountId>,
+            user: Option<AccountId>,
+        }
+
+        let logged_dex_events = receipt
             .receipt
             .execution_outcome
             .outcome
             .logs
             .iter()
             .flat_map(|log| {
-                if let Ok(event) = EventLogData::<DexEventData<serde_json::Value>>::deserialize(log)
+                if let Ok(event) = EventLogData::<OldJsonDexEventData>::deserialize(log)
                     && event.standard == "inteardex"
                     && event.event == "dex_event"
                 {
-                    return vec![event.data];
+                    return vec![LoggedDexEventData {
+                        dex_id: event.data.dex_id,
+                        event: LoggedDexEvent::Json(event.data.event),
+                        referrer: event.data.referrer,
+                        user: event.data.user,
+                    }];
                 }
                 if let Some(json) = log.strip_prefix("EVENT_JSON:")
-                    && let Ok(IntearDexEvent::DexEvents(encoded)) = serde_json::from_str(json)
+                    && let Ok(IntearDexEvent::DexEventsBorsh(encoded)) = serde_json::from_str(json)
                 {
-                    let decoded = BASE64_STANDARD
-                        .decode(&encoded)
-                        .map_err(|err| err.to_string())
-                        .and_then(|compressed| {
-                            lz4_flex::decompress_size_prepended(&compressed)
-                                .map_err(|err| err.to_string())
-                        })
-                        .and_then(|json| {
-                            serde_json::from_slice(&json).map_err(|err| err.to_string())
-                        });
-                    return decoded.unwrap_or_else(|err| {
-                        log::error!(
-                            "Couldn't decode dex_events in receipt {}: {err}",
-                            receipt.receipt.receipt.receipt_id
-                        );
-                        Vec::new()
-                    });
+                    return match decode_borsh_dex_events(&encoded) {
+                        Ok(dex_events) => dex_events
+                            .into_iter()
+                            .map(|dex_event| LoggedDexEventData {
+                                dex_id: dex_event.dex_id,
+                                event: LoggedDexEvent::Borsh(dex_event.event),
+                                referrer: dex_event.referrer,
+                                user: dex_event.user,
+                            })
+                            .collect(),
+                        Err(err) => {
+                            log::error!(
+                                "Couldn't decode dex_events_borsh in receipt {}: {err}",
+                                receipt.receipt.receipt.receipt_id
+                            );
+                            Vec::new()
+                        }
+                    };
                 }
                 Vec::new()
             });
-        for DexEventData {
+        for LoggedDexEventData {
             dex_id,
             event,
             referrer,
             user,
-        } in dex_events
+        } in logged_dex_events
         {
             if dex_id != PLACH_DEX_ID.parse().unwrap() {
                 continue;
@@ -94,7 +134,14 @@ pub async fn detect(
                 receipt_id: receipt.receipt.receipt.receipt_id,
             };
 
-            let event = match serde_json::from_value::<XykDexEvent>(event) {
+            let event = match event {
+                LoggedDexEvent::Borsh(bytes) => near_sdk::borsh::from_slice::<XykDexEvent>(&bytes)
+                    .map_err(|err| err.to_string()),
+                LoggedDexEvent::Json(value) => serde_json::from_value::<XykDexEventV1>(value)
+                    .map(XykDexEvent::from)
+                    .map_err(|err| err.to_string()),
+            };
+            let event = match event {
                 Ok(event) => event,
                 Err(err) => {
                     if block.block.header.height > 187015239 {
@@ -112,7 +159,8 @@ pub async fn detect(
             match event {
                 XykDexEvent::Swap {
                     pool_id,
-                    request,
+                    asset_in,
+                    asset_out,
                     amount_in,
                     amount_out,
                     ..
@@ -132,10 +180,10 @@ pub async fn detect(
                             ),
                         }
                     }
-                    let Some(asset_in) = nep141_or_near(request.asset_in) else {
+                    let Some(asset_in) = nep141_or_near(asset_in) else {
                         continue;
                     };
-                    let Some(asset_out) = nep141_or_near(request.asset_out) else {
+                    let Some(asset_out) = nep141_or_near(asset_out) else {
                         continue;
                     };
                     let context = context(user);
