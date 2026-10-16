@@ -2913,3 +2913,107 @@ async fn detects_aggregatedex_referrer() {
         ]
     );
 }
+
+#[tokio::test]
+async fn detects_intear_plach_split_route_trades() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        options(BlockRange::Range {
+            start_inclusive: 220_224_540,
+            end_exclusive: Some(220_224_543),
+        }),
+    )
+    .await
+    .unwrap();
+
+    let trader = "2712cda686dfac2f59675241393d59264f0d4e0df93acd90a0ef05d59c393dd9"
+        .parse::<AccountId>()
+        .unwrap();
+    let context = TradeContext {
+        trader: trader.clone(),
+        block_height: 220224542,
+        block_timestamp_nanosec: 1792154701699439570,
+        transaction_id: "Hsxe7ggh6DWGGFoBbbutKLTnzQKFxY3HEFrxfiGiLMt"
+            .parse()
+            .unwrap(),
+        receipt_id: "44FpGN6bT4XH3g4UwbC4woMvVPv4Szu6QBFsX1KJXWxm"
+            .parse()
+            .unwrap(),
+    };
+    let swap = |pool: &str, token_in: &str, token_out: &str, amount_in, amount_out| RawPoolSwap {
+        pool: pool.to_owned(),
+        token_in: token_in.parse().unwrap(),
+        token_out: token_out.parse().unwrap(),
+        amount_in,
+        amount_out,
+        referrer: Some("wallet.intear.near".parse().unwrap()),
+    };
+    let usdc = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
+    let swaps = vec![
+        swap(
+            "INTEARPLACH-274",
+            "near",
+            "token.intear.near",
+            273000000000000000000000000,
+            63042234169674744155454111112,
+        ),
+        swap(
+            "INTEARPLACH-85",
+            "near",
+            usdc,
+            24000000000000000000000000,
+            123870165,
+        ),
+        swap(
+            "INTEARPLACH-278",
+            usdc,
+            "token.intear.near",
+            123870165,
+            5569620158544803717718412813,
+        ),
+        swap(
+            "INTEARPLACH-22",
+            "near",
+            usdc,
+            3000000000000000000000000,
+            15566235,
+        ),
+        swap(
+            "INTEARPLACH-278",
+            usdc,
+            "token.intear.near",
+            15566235,
+            680834965609734862580834349,
+        ),
+    ];
+    assert_eq!(
+        *indexer.handler.pool_swaps.get(&trader).unwrap(),
+        swaps
+            .iter()
+            .map(|swap| (swap.clone(), context.clone()))
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        *indexer.handler.balance_change_swaps.get(&trader).unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("near".parse().unwrap(), -300000000000000000000000000),
+                    (
+                        "token.intear.near".parse().unwrap(),
+                        69292689293829282735753358274
+                    ),
+                ]),
+                pool_swaps: swaps,
+            },
+            context,
+            Some("wallet.intear.near".to_string())
+        )]
+    );
+}
