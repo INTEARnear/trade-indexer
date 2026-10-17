@@ -213,7 +213,7 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
                                     block.block.header.height
                                 )
                             })?;
-                        if pool.version > 1 {
+                        if pool.version > 2 {
                             return Err(format!(
                                 "DCL pool {} in block {} has a record version this doesn't know: {}",
                                 pool.pool_id, block.block.header.height, pool.version
