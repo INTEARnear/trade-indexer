@@ -13,7 +13,7 @@ use inindexer::{IndexerOptions, near_indexer_primitives::types::AccountId, run_i
 
 use crate::{
     BalanceChangeSwap, LiquidityChange, LiquidityChangeKind, PoolChangeEvent, PoolId, PoolType,
-    RawPoolSwap, TradeContext, TradeEventHandler, TradeIndexer, ref_finance_state, refdcl_state,
+    RawPoolSwap, TradeContext, TradeEventHandler, TradeIndexer, ref_finance_state,
 };
 
 #[derive(Default)]
