@@ -2915,6 +2915,59 @@ async fn detects_aggregatedex_referrer() {
 }
 
 #[tokio::test]
+async fn detects_aggregatedex_app_fee_recipient_as_referrer() {
+    // HOT Wallet swap, relayed by 0here.tg: app_fee_recipient intents.tg, no referral
+    assert_aggregatedex_referrer(220_395_430, 220_395_450, "maxiapeclub.tg", "intents.tg").await;
+    // Meteor swap: app_fee_recipient meteor-fees.near, and Rhea's onebot.near
+    assert_aggregatedex_referrer(
+        220_403_790,
+        220_403_810,
+        "nizamobel.near",
+        "meteor-fees.near",
+    )
+    .await;
+}
+
+async fn assert_aggregatedex_referrer(
+    start_inclusive: BlockHeight,
+    end_exclusive: BlockHeight,
+    trader: &str,
+    referrer: &str,
+) {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        options(BlockRange::Range {
+            start_inclusive,
+            end_exclusive: Some(end_exclusive),
+        }),
+    )
+    .await
+    .unwrap();
+
+    let trader = trader.parse::<AccountId>().unwrap();
+    let pool_swaps = indexer.handler.pool_swaps.get(&trader).unwrap();
+    assert!(!pool_swaps.is_empty());
+    assert!(
+        pool_swaps
+            .iter()
+            .all(|(swap, _)| swap.referrer == Some(referrer.parse().unwrap()))
+    );
+    let balance_change_swaps = indexer.handler.balance_change_swaps.get(&trader).unwrap();
+    assert!(!balance_change_swaps.is_empty());
+    assert!(
+        balance_change_swaps
+            .iter()
+            .all(|(_, _, swap_referrer)| swap_referrer.as_deref() == Some(referrer))
+    );
+}
+
+#[tokio::test]
 async fn detects_intear_plach_split_route_trades() {
     let mut indexer = TradeIndexer {
         handler: TestHandler::default(),

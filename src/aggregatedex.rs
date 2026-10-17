@@ -22,6 +22,7 @@ struct Message {
 #[derive(Deserialize)]
 struct SwapRequest {
     referral: Option<AccountId>,
+    app_fee_recipient: Option<AccountId>,
 }
 
 /// Who made a trade that aggregatedex.near swapped for, and their referral. Their call is the
@@ -72,5 +73,5 @@ pub(crate) fn aggregatedex_trade(
         );
         return (trader, None);
     };
-    (trader, request.referral)
+    (trader, request.app_fee_recipient.or(request.referral))
 }
