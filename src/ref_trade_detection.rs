@@ -168,7 +168,9 @@ pub async fn detect(
 
         // aggregatedex.near passes Ref its own referral, rather than its user's
         if trader == AGGREGATEDEX_CONTRACT_ID {
-            (trader, referrer) = aggregatedex_trade(receipt, transaction);
+            let (ad_trader, ad_referrer) = aggregatedex_trade(receipt, transaction);
+            trader = ad_trader;
+            referrer = ad_referrer.or(referrer);
         }
 
         let context = TradeContext {

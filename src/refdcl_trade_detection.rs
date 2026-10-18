@@ -128,7 +128,8 @@ pub async fn detect(
                         continue;
                     }
                     let (trader, referrer) = if swap.swapper == AGGREGATEDEX_CONTRACT_ID {
-                        aggregatedex_trade(receipt, transaction)
+                        let (ad_trader, ad_referrer) = aggregatedex_trade(receipt, transaction);
+                        (ad_trader, ad_referrer.or(referrer.clone()))
                     } else {
                         (swap.swapper, referrer.clone())
                     };
