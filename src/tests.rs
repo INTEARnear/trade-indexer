@@ -2461,7 +2461,7 @@ async fn detects_aggregatedex_trades() {
                     token_out: "token.lonkingnearbackto2024.near".parse().unwrap(),
                     amount_in: 166180759515527998936891466,
                     amount_out: 318958630231220771,
-                    referrer: None,
+                    referrer: Some("onebot.near".parse().unwrap()),
                 },
                 TradeContext {
                     trader: "t-rexcoochie.near".parse().unwrap(),
@@ -2540,7 +2540,7 @@ async fn detects_aggregatedex_trades() {
                         token_out: "token.lonkingnearbackto2024.near".parse().unwrap(),
                         amount_in: 166180759515527998936891466,
                         amount_out: 318958630231220771,
-                        referrer: None,
+                        referrer: Some("onebot.near".parse().unwrap()),
                     }],
                 },
                 TradeContext {
