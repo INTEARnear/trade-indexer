@@ -2554,7 +2554,7 @@ async fn detects_aggregatedex_trades() {
                         .parse()
                         .unwrap(),
                 },
-                None,
+                Some("onebot.near".to_string()),
             ),
         ]
     );
