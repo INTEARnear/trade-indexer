@@ -116,6 +116,9 @@ pub async fn detect(
                 | TokenReceiverMessage::LimitOrderWithSwap { referral_id } => referral_id,
             }
         });
+        let mut merged_pool_swaps = Vec::new();
+        let mut merged_context = None;
+        let mut merged_referrer = None;
         for log in &receipt.receipt.execution_outcome.outcome.logs {
             if let Ok(event) = EventLogData::<Vec<SwapEvent>>::deserialize(log)
                 && (event.event == "swap" || event.event == "swap_desire")
@@ -151,15 +154,11 @@ pub async fn detect(
                     handler
                         .on_raw_pool_swap(context.clone(), raw_pool_swap.clone())
                         .await;
-                    if let Some(balance_changes) = BalanceChangeSwap::new(vec![raw_pool_swap]) {
-                        handler
-                            .on_balance_change_swap(
-                                context,
-                                balance_changes,
-                                referrer.as_ref().map(|id| id.to_string()),
-                            )
-                            .await;
+                    if merged_context.is_none() {
+                        merged_context = Some(context);
                     }
+                    merged_referrer = merged_referrer.or(referrer);
+                    merged_pool_swaps.push(raw_pool_swap);
                 }
             }
 
@@ -236,6 +235,17 @@ pub async fn detect(
                 )
                 .await;
             }
+        }
+        if let Some(context) = merged_context
+            && let Some(balance_changes) = BalanceChangeSwap::new(merged_pool_swaps)
+        {
+            handler
+                .on_balance_change_swap(
+                    context,
+                    balance_changes,
+                    merged_referrer.map(|id| id.to_string()),
+                )
+                .await;
         }
     }
 }
