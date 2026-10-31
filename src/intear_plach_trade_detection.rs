@@ -13,7 +13,8 @@ use intear_events::events::trade::trade_pool_change::{
 };
 use serde::Deserialize;
 use xyk_dex_types::{
-    AssetWithBalance, CurrentFees, FeeReceiver, PoolView, XykDexEvent, XykDexEventV1,
+    AssetWithBalance, ClaimMode, CurrentFees, FeeReceiver, PROTOCOL_FEE_RECEIVER_ID, PoolView,
+    XykDexEvent, XykDexEventV1,
 };
 
 use crate::{
@@ -275,18 +276,6 @@ pub async fn detect(
                             total_shares: total_shares.map(|shares| shares.0),
                         },
                         PoolView::Launch {
-                            near_amount,
-                            launched_asset,
-                            fees,
-                            phantom_liquidity_near,
-                            ..
-                        } => IntearPlachPool::Launch {
-                            near_amount: near_amount.0,
-                            launched_asset: intear_asset(launched_asset),
-                            fees: intear_fees(fees),
-                            phantom_liquidity_near: phantom_liquidity_near.0,
-                        },
-                        PoolView::LaunchV2 {
                             quote_asset,
                             launched_asset,
                             fees,
@@ -309,6 +298,10 @@ pub async fn detect(
                         })
                         .await;
                 }
+                // Liquidity providers' choices of payouts, and the fees they collect, which
+                // don't trade or change pools
+                XykDexEvent::LiquidityFeePayoutSet { .. }
+                | XykDexEvent::LiquidityFeesCollected { .. } => {}
             }
         }
 
@@ -354,10 +347,19 @@ fn intear_fees(fees: CurrentFees) -> IntearPlachFeeConfiguration {
             .into_iter()
             .map(|(receiver, fee)| {
                 let receiver = match receiver {
-                    FeeReceiver::Account(account_id) => IntearPlachFeeReceiver::Account(account_id),
+                    FeeReceiver::Account {
+                        account_id,
+                        claim_mode: ClaimMode::OnlyOwner,
+                        ..
+                    } => IntearPlachFeeReceiver::Account(account_id),
+                    FeeReceiver::Account {
+                        account_id,
+                        claim_mode: ClaimMode::Anyone,
+                        ..
+                    } => IntearPlachFeeReceiver::Community(account_id),
                     FeeReceiver::Pool => IntearPlachFeeReceiver::Pool,
-                    FeeReceiver::Community(account_id) => {
-                        IntearPlachFeeReceiver::Community(account_id)
+                    FeeReceiver::Protocol => {
+                        IntearPlachFeeReceiver::Account(PROTOCOL_FEE_RECEIVER_ID.to_owned())
                     }
                 };
                 (receiver, fee)
