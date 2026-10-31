@@ -2887,30 +2887,17 @@ async fn detects_aggregatedex_referrer() {
             .balance_change_swaps
             .get(&"drmlt.near".parse::<AccountId>().unwrap())
             .unwrap(),
-        vec![
-            (
-                BalanceChangeSwap {
-                    balance_changes: HashMap::from_iter([
-                        ("yuvi-6c041e37.qlyphs.near".parse().unwrap(), -21000),
-                        ("qtc.omft.near".parse().unwrap(), 716316599150),
-                    ]),
-                    pool_swaps: vec![first_swap],
-                },
-                context.clone(),
-                Some("stardrof1.near".to_string()),
-            ),
-            (
-                BalanceChangeSwap {
-                    balance_changes: HashMap::from_iter([
-                        ("qtc.omft.near".parse().unwrap(), -716316599150),
-                        ("wrap.near".parse().unwrap(), 17455168504293328338263287),
-                    ]),
-                    pool_swaps: vec![second_swap],
-                },
-                context,
-                Some("stardrof1.near".to_string()),
-            ),
-        ]
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("yuvi-6c041e37.qlyphs.near".parse().unwrap(), -21000),
+                    ("wrap.near".parse().unwrap(), 17455168504293328338263287),
+                ]),
+                pool_swaps: vec![first_swap, second_swap],
+            },
+            context,
+            Some("stardrof1.near".to_string()),
+        )]
     );
 }
 
