@@ -193,11 +193,11 @@ pub async fn detect(
                     }
                     merged_referrer = merged_referrer.or(referrer.clone());
                     let raw_pool_swap = RawPoolSwap {
-                        pool: create_plach_pool_id(pool_id),
+                        pool: create_plach_pool_id(pool_id.get()),
                         token_in: asset_in,
                         token_out: asset_out,
-                        amount_in: amount_in.0,
-                        amount_out: amount_out.0,
+                        amount_in: amount_in.get(),
+                        amount_out: amount_out.get(),
                         referrer,
                     };
                     handler
@@ -223,9 +223,12 @@ pub async fn detect(
                     report_liquidity(
                         handler,
                         context(user),
-                        create_plach_pool_id(pool_id),
+                        create_plach_pool_id(pool_id.get()),
                         LiquidityChangeKind::Add,
-                        vec![(asset_0, added_amount_0.0), (asset_1, added_amount_1.0)],
+                        vec![
+                            (asset_0, added_amount_0.get()),
+                            (asset_1, added_amount_1.get()),
+                        ],
                     )
                     .await;
                 }
@@ -247,9 +250,12 @@ pub async fn detect(
                     report_liquidity(
                         handler,
                         context(user),
-                        create_plach_pool_id(pool_id),
+                        create_plach_pool_id(pool_id.get()),
                         LiquidityChangeKind::Remove,
-                        vec![(asset_0, removed_amount_0.0), (asset_1, removed_amount_1.0)],
+                        vec![
+                            (asset_0, removed_amount_0.get()),
+                            (asset_1, removed_amount_1.get()),
+                        ],
                     )
                     .await;
                 }
@@ -273,7 +279,7 @@ pub async fn detect(
                         } => IntearPlachPool::Public {
                             assets: (intear_asset(assets.0), intear_asset(assets.1)),
                             fees: intear_fees(fees),
-                            total_shares: total_shares.map(|shares| shares.0),
+                            total_shares: (!total_shares.is_none()).then_some(total_shares.get()),
                         },
                         PoolView::Launch {
                             quote_asset,
@@ -285,12 +291,12 @@ pub async fn detect(
                             quote_asset: intear_asset(quote_asset),
                             launched_asset: intear_asset(launched_asset),
                             fees: intear_fees(fees),
-                            phantom_liquidity: phantom_liquidity.0,
+                            phantom_liquidity: phantom_liquidity.get(),
                         },
                     };
                     handler
                         .on_pool_change(PoolChangeEvent {
-                            pool_id: create_plach_pool_id(pool_id),
+                            pool_id: create_plach_pool_id(pool_id.get()),
                             receipt_id: receipt.receipt.receipt.receipt_id,
                             block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
                             block_height: block.block.header.height,
@@ -336,7 +342,7 @@ fn intear_asset(asset: AssetWithBalance) -> IntearAssetWithBalance {
             AssetId::Nep245(contract_id, token_id) => IntearAssetId::Nep245(contract_id, token_id),
             AssetId::Nep171(contract_id, token_id) => IntearAssetId::Nep171(contract_id, token_id),
         },
-        balance: asset.balance.0,
+        balance: asset.balance.get(),
     }
 }
 
@@ -362,7 +368,7 @@ fn intear_fees(fees: CurrentFees) -> IntearPlachFeeConfiguration {
                         IntearPlachFeeReceiver::Account(PROTOCOL_FEE_RECEIVER_ID.to_owned())
                     }
                 };
-                (receiver, fee)
+                (receiver, fee.get())
             })
             .collect(),
     }
