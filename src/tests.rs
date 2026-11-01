@@ -1894,40 +1894,17 @@ async fn detects_refdcl_swap_by_output_trades() {
                     .unwrap()
             )
             .unwrap(),
-        vec![
-            (
-                BalanceChangeSwap {
-                    balance_changes: HashMap::from_iter([
-                        (
-                            "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
-                                .parse()
-                                .unwrap(),
-                            -649513
-                        ),
-                        ("token.rhealab.near".parse().unwrap(), 5000000000001757531),
-                    ]),
-                    pool_swaps: vec![usdc_to_rhea],
-                },
-                context.clone(),
-                None
-            ),
-            (
-                BalanceChangeSwap {
-                    balance_changes: HashMap::from_iter([
-                        ("wrap.near".parse().unwrap(), -135259796188882904388200),
-                        (
-                            "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
-                                .parse()
-                                .unwrap(),
-                            649513
-                        ),
-                    ]),
-                    pool_swaps: vec![wnear_to_usdc],
-                },
-                context,
-                None
-            ),
-        ]
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("wrap.near".parse().unwrap(), -135259796188882904388200),
+                    ("token.rhealab.near".parse().unwrap(), 5000000000001757531),
+                ]),
+                pool_swaps: vec![usdc_to_rhea, wnear_to_usdc],
+            },
+            context,
+            None
+        )]
     );
 }
 
