@@ -1535,7 +1535,7 @@ dependencies = [
 [[package]]
 name = "intear-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#8e8c9d42443aa29bcbc0d4460413247cd0cbf442"
+source = "git+https://github.com/INTEARnear/dex#2e6139170fb1f649ed1cb11f23a54c92cfe33847"
 dependencies = [
  "near-sdk",
 ]
@@ -4229,7 +4229,7 @@ dependencies = [
 [[package]]
 name = "xyk-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#8e8c9d42443aa29bcbc0d4460413247cd0cbf442"
+source = "git+https://github.com/INTEARnear/dex#2e6139170fb1f649ed1cb11f23a54c92cfe33847"
 dependencies = [
  "ethnum",
  "intear-dex-types",
