@@ -13,14 +13,16 @@ use inindexer::{
         views::{StateChangeCauseView, StateChangeValueView},
     },
 };
-use intear_events::events::trade::trade_pool_change::{AidolsPool, IntearPlachPool, RefDclPool};
+use intear_events::events::trade::trade_pool_change::{
+    AidolsPool, IntearPlachPool, IntearQoqPool, RefDclPool,
+};
 use ref_trade_detection::{REF_CONTRACT_ID, TESTNET_REF_CONTRACT_ID};
 use refdcl_trade_detection::REFDCL_CONTRACT_ID;
 
 pub mod aggregatedex;
 pub mod aidols_state;
 pub mod aidols_trade_detection;
-pub mod intear_plach_trade_detection;
+pub mod intear_dex_trade_detection;
 #[cfg(feature = "redis")]
 pub mod redis_handler;
 pub mod ref_finance_state;
@@ -289,7 +291,7 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
             self.is_testnet,
         )
         .await;
-        intear_plach_trade_detection::detect(
+        intear_dex_trade_detection::detect(
             receipt,
             transaction,
             block,
@@ -422,4 +424,5 @@ pub enum PoolType {
     Aidols(AidolsPool),
     IntearPlach(IntearPlachPool),
     RefDcl(RefDclPool),
+    IntearQoq(IntearQoqPool),
 }

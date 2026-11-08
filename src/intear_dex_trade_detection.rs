@@ -1,3 +1,4 @@
+use amp_dex_types::AmpDexEvent;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use inindexer::near_indexer_primitives::types::AccountId;
@@ -6,15 +7,16 @@ use inindexer::{
     StreamerMessage,
     transaction_trees::{ExecutedReceipt, TransactionTree},
 };
-use intear_dex_types::{AssetId, DexEventData, DexId, IntearDexEvent};
+use intear_dex_common::{AssetId, AssetWithBalance, DexId};
+use intear_dex_types::{DexEventData, IntearDexEvent};
 use intear_events::events::trade::trade_pool_change::{
     IntearAssetId, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachFeeReceiver,
-    IntearPlachPool,
+    IntearPlachPool, IntearQoqPool,
 };
 use serde::Deserialize;
 use xyk_dex_types::{
-    AssetWithBalance, ClaimMode, CurrentFees, FeeReceiver, PROTOCOL_FEE_RECEIVER_ID, PoolView,
-    XykDexEvent, XykDexEventV1,
+    ClaimMode, CurrentFees, FeeReceiver, PROTOCOL_FEE_RECEIVER_ID, PoolView, XykDexEvent,
+    XykDexEventV1,
 };
 
 use crate::{
@@ -25,6 +27,7 @@ use crate::{
 pub const INTEAR_CONTRACT_ID: &str = "dex.intear.near";
 pub const INTEAR_LAUNCH_CONTRACT_IDS: &[&str] = &["launch.intear.near", "launch-v2.intear.near"];
 pub const PLACH_DEX_ID: &str = "slimedragon.near/xyk";
+pub const QOQ_DEX_ID: &str = "slimedragon.near/amp";
 
 /// The dex events of a `dex_events_borsh` log: base64 of an lz4 block prefixed with its
 /// uncompressed length, of the borsh of the events
@@ -117,6 +120,8 @@ pub async fn detect(
                 }
                 Vec::new()
             });
+        let plach_dex_id: DexId = PLACH_DEX_ID.parse().unwrap();
+        let qoq_dex_id: DexId = QOQ_DEX_ID.parse().unwrap();
         for LoggedDexEventData {
             dex_id,
             event,
@@ -124,9 +129,51 @@ pub async fn detect(
             user,
         } in logged_dex_events
         {
-            if dex_id != PLACH_DEX_ID.parse().unwrap() {
+            let change = if dex_id == plach_dex_id {
+                let event = match event {
+                    LoggedDexEvent::Borsh(bytes) => {
+                        near_sdk::borsh::from_slice::<XykDexEvent>(&bytes)
+                            .map_err(|err| err.to_string())
+                    }
+                    LoggedDexEvent::Json(value) => serde_json::from_value::<XykDexEventV1>(value)
+                        .map(XykDexEvent::from)
+                        .map_err(|err| err.to_string()),
+                };
+                match event {
+                    Ok(event) => plach_change(event),
+                    Err(err) => {
+                        if block.block.header.height > 187015239 {
+                            panic!(
+                                "Couldn't parse plach event in receipt {}: {err}",
+                                receipt.receipt.receipt.receipt_id
+                            );
+                        } else {
+                            // old contract, mainly testing
+                            continue;
+                        }
+                    }
+                }
+            } else if dex_id == qoq_dex_id {
+                let event = match event {
+                    LoggedDexEvent::Borsh(bytes) => {
+                        near_sdk::borsh::from_slice::<AmpDexEvent>(&bytes)
+                            .map_err(|err| err.to_string())
+                    }
+                    LoggedDexEvent::Json(_) => Err("Qoq only logs borsh events".to_string()),
+                };
+                match event {
+                    Ok(event) => qoq_change(event),
+                    Err(err) => panic!(
+                        "Couldn't parse qoq event in receipt {}: {err}",
+                        receipt.receipt.receipt.receipt_id
+                    ),
+                }
+            } else {
                 continue;
-            }
+            };
+            let Some(change) = change else {
+                continue;
+            };
             let context = |trader: AccountId| TradeContext {
                 trader,
                 block_height: block.block.header.height,
@@ -135,36 +182,13 @@ pub async fn detect(
                 receipt_id: receipt.receipt.receipt.receipt_id,
             };
 
-            let event = match event {
-                LoggedDexEvent::Borsh(bytes) => near_sdk::borsh::from_slice::<XykDexEvent>(&bytes)
-                    .map_err(|err| err.to_string()),
-                LoggedDexEvent::Json(value) => serde_json::from_value::<XykDexEventV1>(value)
-                    .map(XykDexEvent::from)
-                    .map_err(|err| err.to_string()),
-            };
-            let event = match event {
-                Ok(event) => event,
-                Err(err) => {
-                    if block.block.header.height > 187015239 {
-                        panic!(
-                            "Couldn't parse plach event in receipt {}: {err}",
-                            receipt.receipt.receipt.receipt_id
-                        );
-                    } else {
-                        // old contract, mainly testing
-                        continue;
-                    }
-                }
-            };
-
-            match event {
-                XykDexEvent::Swap {
+            match change {
+                DexChange::Swap {
                     pool_id,
                     asset_in,
                     asset_out,
                     amount_in,
                     amount_out,
-                    ..
                 } => {
                     let Some(mut user) = user else { continue };
                     if INTEAR_LAUNCH_CONTRACT_IDS.contains(&user.as_str()) {
@@ -176,7 +200,7 @@ pub async fn detect(
                                 user = launch_call.receipt.receipt.predecessor_id.clone()
                             }
                             None => log::warn!(
-                                "Could not find who called {user} for the plach swap {:?}",
+                                "Could not find who called {user} for the swap {:?}",
                                 transaction.transaction.transaction.hash
                             ),
                         }
@@ -193,11 +217,11 @@ pub async fn detect(
                     }
                     merged_referrer = merged_referrer.or(referrer.clone());
                     let raw_pool_swap = RawPoolSwap {
-                        pool: create_plach_pool_id(pool_id.get()),
+                        pool: pool_id,
                         token_in: asset_in,
                         token_out: asset_out,
-                        amount_in: amount_in.get(),
-                        amount_out: amount_out.get(),
+                        amount_in,
+                        amount_out,
                         referrer,
                     };
                     handler
@@ -205,13 +229,10 @@ pub async fn detect(
                         .await;
                     merged_pool_swaps.push(raw_pool_swap);
                 }
-                XykDexEvent::LiquidityAdded {
+                DexChange::Liquidity {
                     pool_id,
-                    asset_0,
-                    asset_1,
-                    added_amount_0,
-                    added_amount_1,
-                    ..
+                    kind,
+                    amounts: [(asset_0, amount_0), (asset_1, amount_1)],
                 } => {
                     let Some(user) = user else { continue };
                     let Some(asset_0) = nep141_or_near(asset_0) else {
@@ -223,91 +244,23 @@ pub async fn detect(
                     report_liquidity(
                         handler,
                         context(user),
-                        create_plach_pool_id(pool_id.get()),
-                        LiquidityChangeKind::Add,
-                        vec![
-                            (asset_0, added_amount_0.get()),
-                            (asset_1, added_amount_1.get()),
-                        ],
+                        pool_id,
+                        kind,
+                        vec![(asset_0, amount_0), (asset_1, amount_1)],
                     )
                     .await;
                 }
-                XykDexEvent::LiquidityRemoved {
-                    pool_id,
-                    asset_0,
-                    asset_1,
-                    removed_amount_0,
-                    removed_amount_1,
-                    ..
-                } => {
-                    let Some(user) = user else { continue };
-                    let Some(asset_0) = nep141_or_near(asset_0) else {
-                        continue;
-                    };
-                    let Some(asset_1) = nep141_or_near(asset_1) else {
-                        continue;
-                    };
-                    report_liquidity(
-                        handler,
-                        context(user),
-                        create_plach_pool_id(pool_id.get()),
-                        LiquidityChangeKind::Remove,
-                        vec![
-                            (asset_0, removed_amount_0.get()),
-                            (asset_1, removed_amount_1.get()),
-                        ],
-                    )
-                    .await;
-                }
-                XykDexEvent::PoolUpdated { pool_id, pool } => {
-                    let pool = match pool {
-                        PoolView::Private {
-                            assets,
-                            fees,
-                            owner_id,
-                            ..
-                        } => IntearPlachPool::Private {
-                            assets: (intear_asset(assets.0), intear_asset(assets.1)),
-                            fees: intear_fees(fees),
-                            owner_id,
-                        },
-                        PoolView::Public {
-                            assets,
-                            fees,
-                            total_shares,
-                            ..
-                        } => IntearPlachPool::Public {
-                            assets: (intear_asset(assets.0), intear_asset(assets.1)),
-                            fees: intear_fees(fees),
-                            total_shares: (!total_shares.is_none()).then_some(total_shares.get()),
-                        },
-                        PoolView::Launch {
-                            quote_asset,
-                            launched_asset,
-                            fees,
-                            phantom_liquidity,
-                            ..
-                        } => IntearPlachPool::LaunchV2 {
-                            quote_asset: intear_asset(quote_asset),
-                            launched_asset: intear_asset(launched_asset),
-                            fees: intear_fees(fees),
-                            phantom_liquidity: phantom_liquidity.get(),
-                        },
-                    };
+                DexChange::PoolUpdated { pool_id, pool } => {
                     handler
                         .on_pool_change(PoolChangeEvent {
-                            pool_id: create_plach_pool_id(pool_id.get()),
+                            pool_id,
                             receipt_id: receipt.receipt.receipt.receipt_id,
                             block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
                             block_height: block.block.header.height,
-                            pool: PoolType::IntearPlach(pool),
+                            pool,
                         })
                         .await;
                 }
-                // Liquidity providers' choices of payouts, and the fees they collect, which
-                // don't trade or change pools
-                XykDexEvent::LiquidityFeePayoutSet { .. }
-                | XykDexEvent::LiquidityFeesCollected { .. } => {}
             }
         }
 
@@ -321,6 +274,186 @@ pub async fn detect(
                     merged_referrer.map(|id| id.to_string()),
                 )
                 .await;
+        }
+    }
+}
+
+/// What an event of a DEX on Intear DEX changes, which is indexed the same for every DEX
+enum DexChange {
+    Swap {
+        pool_id: PoolId,
+        asset_in: AssetId,
+        asset_out: AssetId,
+        amount_in: u128,
+        amount_out: u128,
+    },
+    Liquidity {
+        pool_id: PoolId,
+        kind: LiquidityChangeKind,
+        amounts: [(AssetId, u128); 2],
+    },
+    PoolUpdated {
+        pool_id: PoolId,
+        pool: PoolType,
+    },
+}
+
+/// `None` for liquidity providers' choices of payouts, and the fees they collect, which don't
+/// trade or change pools
+fn plach_change(event: XykDexEvent) -> Option<DexChange> {
+    match event {
+        XykDexEvent::Swap {
+            pool_id,
+            asset_in,
+            asset_out,
+            amount_in,
+            amount_out,
+            ..
+        } => Some(DexChange::Swap {
+            pool_id: create_plach_pool_id(pool_id.get()),
+            asset_in,
+            asset_out,
+            amount_in: amount_in.get(),
+            amount_out: amount_out.get(),
+        }),
+        XykDexEvent::LiquidityAdded {
+            pool_id,
+            asset_0,
+            asset_1,
+            added_amount_0,
+            added_amount_1,
+            ..
+        } => Some(DexChange::Liquidity {
+            pool_id: create_plach_pool_id(pool_id.get()),
+            kind: LiquidityChangeKind::Add,
+            amounts: [
+                (asset_0, added_amount_0.get()),
+                (asset_1, added_amount_1.get()),
+            ],
+        }),
+        XykDexEvent::LiquidityRemoved {
+            pool_id,
+            asset_0,
+            asset_1,
+            removed_amount_0,
+            removed_amount_1,
+            ..
+        } => Some(DexChange::Liquidity {
+            pool_id: create_plach_pool_id(pool_id.get()),
+            kind: LiquidityChangeKind::Remove,
+            amounts: [
+                (asset_0, removed_amount_0.get()),
+                (asset_1, removed_amount_1.get()),
+            ],
+        }),
+        XykDexEvent::PoolUpdated { pool_id, pool } => {
+            let pool = match pool {
+                PoolView::Private {
+                    assets,
+                    fees,
+                    owner_id,
+                    ..
+                } => IntearPlachPool::Private {
+                    assets: (intear_asset(assets.0), intear_asset(assets.1)),
+                    fees: intear_fees(fees),
+                    owner_id,
+                },
+                PoolView::Public {
+                    assets,
+                    fees,
+                    total_shares,
+                    ..
+                } => IntearPlachPool::Public {
+                    assets: (intear_asset(assets.0), intear_asset(assets.1)),
+                    fees: intear_fees(fees),
+                    total_shares: (!total_shares.is_none()).then_some(total_shares.get()),
+                },
+                PoolView::Launch {
+                    quote_asset,
+                    launched_asset,
+                    fees,
+                    phantom_liquidity,
+                    ..
+                } => IntearPlachPool::LaunchV2 {
+                    quote_asset: intear_asset(quote_asset),
+                    launched_asset: intear_asset(launched_asset),
+                    fees: intear_fees(fees),
+                    phantom_liquidity: phantom_liquidity.get(),
+                },
+            };
+            Some(DexChange::PoolUpdated {
+                pool_id: create_plach_pool_id(pool_id.get()),
+                pool: PoolType::IntearPlach(pool),
+            })
+        }
+        XykDexEvent::LiquidityFeePayoutSet { .. } | XykDexEvent::LiquidityFeesCollected { .. } => {
+            None
+        }
+    }
+}
+
+/// `None` for liquidity providers' choices of payouts, and the fees they collect, which don't
+/// trade or change pools
+fn qoq_change(event: AmpDexEvent) -> Option<DexChange> {
+    match event {
+        AmpDexEvent::Swap {
+            pool_id,
+            asset_in,
+            asset_out,
+            amount_in,
+            amount_out,
+            ..
+        } => Some(DexChange::Swap {
+            pool_id: create_qoq_pool_id(pool_id.get()),
+            asset_in,
+            asset_out,
+            amount_in: amount_in.get(),
+            amount_out: amount_out.get(),
+        }),
+        AmpDexEvent::LiquidityAdded {
+            pool_id,
+            asset_0,
+            asset_1,
+            added_amount_0,
+            added_amount_1,
+            ..
+        } => Some(DexChange::Liquidity {
+            pool_id: create_qoq_pool_id(pool_id.get()),
+            kind: LiquidityChangeKind::Add,
+            amounts: [
+                (asset_0, added_amount_0.get()),
+                (asset_1, added_amount_1.get()),
+            ],
+        }),
+        AmpDexEvent::LiquidityRemoved {
+            pool_id,
+            asset_0,
+            asset_1,
+            removed_amount_0,
+            removed_amount_1,
+            ..
+        } => Some(DexChange::Liquidity {
+            pool_id: create_qoq_pool_id(pool_id.get()),
+            kind: LiquidityChangeKind::Remove,
+            amounts: [
+                (asset_0, removed_amount_0.get()),
+                (asset_1, removed_amount_1.get()),
+            ],
+        }),
+        AmpDexEvent::PoolUpdated { pool_id, pool } => Some(DexChange::PoolUpdated {
+            pool_id: create_qoq_pool_id(pool_id.get()),
+            pool: PoolType::IntearQoq(IntearQoqPool {
+                assets: (intear_asset(pool.assets.0), intear_asset(pool.assets.1)),
+                decimals: pool.decimals,
+                amplification: pool.amplification.get(),
+                oracle_key: pool.oracle_key.to_string(),
+                last_oracle_price: pool.last_oracle_price.map(|price| price.units()),
+                fee: pool.fee.get(),
+                total_shares: pool.total_shares.get(),
+            }),
+        }),
+        AmpDexEvent::LiquidityFeePayoutSet { .. } | AmpDexEvent::LiquidityFeesCollected { .. } => {
+            None
         }
     }
 }
@@ -376,4 +509,8 @@ fn intear_fees(fees: CurrentFees) -> IntearPlachFeeConfiguration {
 
 pub fn create_plach_pool_id(pool_id: u32) -> PoolId {
     format!("INTEARPLACH-{pool_id}")
+}
+
+pub fn create_qoq_pool_id(pool_id: u32) -> PoolId {
+    format!("INTEARQOQ-{pool_id}")
 }

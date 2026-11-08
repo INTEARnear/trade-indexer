@@ -204,6 +204,9 @@ impl TradeEventHandler for PushToRedisStream {
                 PoolType::RefDcl(pool) => {
                     intear_events::events::trade::trade_pool_change::PoolType::RefDcl(pool)
                 }
+                PoolType::IntearQoq(pool) => {
+                    intear_events::events::trade::trade_pool_change::PoolType::IntearQoq(pool)
+                }
             },
             block_height: event.block_height,
             block_timestamp_nanosec: event.block_timestamp_nanosec,

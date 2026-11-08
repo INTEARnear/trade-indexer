@@ -5,7 +5,7 @@ use inindexer::{
 };
 use intear_events::events::trade::trade_pool_change::{
     AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachFeeReceiver,
-    IntearPlachPool, RefDclPool,
+    IntearPlachPool, IntearQoqPool, RefDclPool,
 };
 use std::collections::HashMap;
 
@@ -3032,5 +3032,221 @@ async fn detects_intear_plach_split_route_trades() {
             context,
             Some("wallet.intear.near".to_string())
         )]
+    );
+}
+
+#[tokio::test]
+async fn detects_intear_qoq_trades() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        options(BlockRange::Range {
+            start_inclusive: 223_607_488,
+            end_exclusive: Some(223_607_493),
+        }),
+    )
+    .await
+    .unwrap();
+
+    let swap = RawPoolSwap {
+        pool: "INTEARQOQ-0".to_owned(),
+        token_in: "near".parse().unwrap(),
+        token_out: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+            .parse()
+            .unwrap(),
+        amount_in: 1000000000000000000000000,
+        amount_out: 3702635,
+        referrer: Some("dex.intear.near".parse().unwrap()),
+    };
+    let context = TradeContext {
+        trader: "slimedragon.near".parse().unwrap(),
+        block_height: 223607491,
+        block_timestamp_nanosec: 1794135923583386836,
+        transaction_id: "9sdvNmX8S6xmLibP7i94ijv3mPFqVKs5KPkRyiXAoteb"
+            .parse()
+            .unwrap(),
+        receipt_id: "HS733CrJehWPKZfS2Xha3BQtbaJn4V9aLq9RvbeiychU"
+            .parse()
+            .unwrap(),
+    };
+    assert_eq!(
+        *indexer
+            .handler
+            .pool_swaps
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(swap.clone(), context.clone())]
+    );
+    assert_eq!(
+        *indexer
+            .handler
+            .balance_change_swaps
+            .get(&"slimedragon.near".parse::<AccountId>().unwrap())
+            .unwrap(),
+        vec![(
+            BalanceChangeSwap {
+                balance_changes: HashMap::from_iter([
+                    ("near".parse().unwrap(), -1000000000000000000000000),
+                    (
+                        "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                            .parse()
+                            .unwrap(),
+                        3702635
+                    )
+                ]),
+                pool_swaps: vec![swap],
+            },
+            context,
+            Some("dex.intear.near".to_owned())
+        )]
+    );
+}
+
+#[tokio::test]
+async fn detects_intear_qoq_pool_state_changes() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        options(BlockRange::Range {
+            start_inclusive: 223_607_488,
+            end_exclusive: Some(223_607_493),
+        }),
+    )
+    .await
+    .unwrap();
+
+    assert!(indexer.handler.state_changes.contains(&PoolChangeEvent {
+        pool_id: "INTEARQOQ-0".to_owned(),
+        receipt_id: "HS733CrJehWPKZfS2Xha3BQtbaJn4V9aLq9RvbeiychU"
+            .parse()
+            .unwrap(),
+        block_timestamp_nanosec: 1794135923583386836,
+        block_height: 223607491,
+        pool: PoolType::IntearQoq(IntearQoqPool {
+            assets: (
+                IntearAssetWithBalance {
+                    asset_id: "near".parse().unwrap(),
+                    balance: 20999500000000000000000000,
+                },
+                IntearAssetWithBalance {
+                    asset_id:
+                        "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                            .parse()
+                            .unwrap(),
+                    balance: 70297365,
+                },
+            ),
+            decimals: (24, 6),
+            amplification: 30,
+            oracle_key: "ed25519:7EK1MhudQrXZBZjvnvvcNXiQ2ByYBkXg8rUhbKL69CGo".to_owned(),
+            last_oracle_price: Some(3710834106257699655),
+            fee: 500,
+            total_shares: 1000000000000000000,
+        }),
+    }));
+}
+
+#[tokio::test]
+async fn detects_intear_qoq_liquidity_add() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        options(BlockRange::Range {
+            start_inclusive: 223_603_883,
+            end_exclusive: Some(223_603_887),
+        }),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        indexer.handler.state_changes,
+        vec![PoolChangeEvent {
+            pool_id: "INTEARQOQ-0".to_owned(),
+            receipt_id: "E2X4qLDPuPuC536aznfPQB1hwoqFKC7456yC8Hkqn96V"
+                .parse()
+                .unwrap(),
+            block_timestamp_nanosec: 1794133871141609166,
+            block_height: 223603884,
+            pool: PoolType::IntearQoq(IntearQoqPool {
+                assets: (
+                    IntearAssetWithBalance {
+                        asset_id: "near".parse().unwrap(),
+                        balance: 20000000000000000000000000,
+                    },
+                    IntearAssetWithBalance {
+                        asset_id:
+                            "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                                .parse()
+                                .unwrap(),
+                        balance: 74000000,
+                    },
+                ),
+                decimals: (24, 6),
+                amplification: 30,
+                oracle_key: "ed25519:7EK1MhudQrXZBZjvnvvcNXiQ2ByYBkXg8rUhbKL69CGo".to_owned(),
+                last_oracle_price: None,
+                fee: 500,
+                total_shares: 1000000000000000000,
+            }),
+        }]
+    );
+
+    assert_eq!(indexer.handler.liquidity_pool_events.len(), 1);
+    let (context, pool_id, tokens) = &indexer.handler.liquidity_pool_events[0];
+    assert_eq!(
+        context.trader,
+        "slimedragon.near".parse::<AccountId>().unwrap()
+    );
+    assert_eq!(pool_id, "INTEARQOQ-0");
+    assert_eq!(
+        tokens,
+        &HashMap::from_iter([
+            ("near".parse().unwrap(), 20000000000000000000000000),
+            (
+                "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                    .parse()
+                    .unwrap(),
+                74000000
+            ),
+        ])
+    );
+
+    assert_eq!(indexer.handler.liquidity_changes.len(), 1);
+    let (context, change) = &indexer.handler.liquidity_changes[0];
+    assert_eq!(
+        context.trader,
+        "slimedragon.near".parse::<AccountId>().unwrap()
+    );
+    assert_eq!(change.pool, "INTEARQOQ-0");
+    assert_eq!(change.kind, LiquidityChangeKind::Add);
+    assert_eq!(
+        (
+            change.token_a.as_str(),
+            change.amount_a,
+            change.token_b.as_str(),
+            change.amount_b
+        ),
+        (
+            "near",
+            20000000000000000000000000,
+            "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+            74000000
+        )
     );
 }
