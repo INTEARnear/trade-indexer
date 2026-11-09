@@ -45,6 +45,5 @@ simple_logger = { version = "5", optional = true }
 dotenvy = { version = "0.15", optional = true }
 
 [dev-dependencies]
-inindexer = { git = "https://github.com/INTEARnear/inindexer", features = ["neardata-old"] }
-reqwest = "0.13"
+inindexer = { git = "https://github.com/INTEARnear/inindexer", features = ["teardata"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

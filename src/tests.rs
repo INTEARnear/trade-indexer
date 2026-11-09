@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use inindexer::{
-    BlockRange, message_provider::ParallelProviderStreamer,
-    near_indexer_primitives::types::BlockHeight, neardata_old::OldNeardataProvider,
+    BlockRange, near_indexer_primitives::types::BlockHeight, teardata::TeardataProvider,
 };
 use intear_events::events::trade::trade_pool_change::{
     AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachFeeReceiver,
@@ -30,25 +29,6 @@ struct TestHandler {
     state_changes: Vec<PoolChangeEvent>,
     liquidity_pool_events: Vec<(TradeContext, PoolId, HashMap<AccountId, i128>)>,
     liquidity_changes: Vec<(TradeContext, LiquidityChange)>,
-}
-
-/// Fetches each block by height. NeardataProvider asks for the last block first, which neardata
-/// rate limits for a minute or more when many tests start at once without an API key.
-fn provider() -> ParallelProviderStreamer<OldNeardataProvider> {
-    let mut client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(10));
-    if let Ok(token) = std::env::var("FASTNEAR_API_KEY") {
-        client = client.default_headers(reqwest::header::HeaderMap::from_iter([(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {token}").parse().unwrap(),
-        )]));
-    }
-    ParallelProviderStreamer::new(
-        OldNeardataProvider::with_base_url_and_client(
-            "https://mainnet.neardata.xyz".to_owned(),
-            client.build().unwrap(),
-        ),
-        4,
-    )
 }
 
 /// The trees also read the blocks just before the range, which have the transactions of the
@@ -113,7 +93,7 @@ async fn detects_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 176281650,
             end_exclusive: Some(176281660),
@@ -205,7 +185,7 @@ async fn detects_ref_multistep_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 118_214_454,
             end_exclusive: Some(118_214_461),
@@ -353,7 +333,7 @@ async fn detects_ref_tearbot_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 176281537,
             end_exclusive: Some(176281542),
@@ -625,7 +605,7 @@ async fn detects_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 118_212_504,
             end_exclusive: Some(118_212_506),
@@ -828,7 +808,7 @@ async fn doesnt_detect_failed_ref_arbitrage_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 118_214_071,
             end_exclusive: Some(118_214_073),
@@ -862,7 +842,7 @@ async fn doesnt_detect_failed_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 112_087_639,
             end_exclusive: Some(112_087_643),
@@ -896,7 +876,7 @@ async fn detects_delegate_ref_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 115_224_414,
             end_exclusive: Some(115_224_420),
@@ -1044,7 +1024,7 @@ async fn detects_ref_state_changes() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 118_210_089,
             end_exclusive: Some(118_210_094),
@@ -1099,7 +1079,7 @@ async fn detects_ref_hot_tg_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 124_427_306,
             end_exclusive: Some(124_427_323),
@@ -1215,7 +1195,7 @@ async fn detects_ref_liquidity_add() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 129_352_974,
             end_exclusive: Some(129_352_978),
@@ -1284,7 +1264,7 @@ async fn detects_ref_liquidity_remove() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 129_364_250,
             end_exclusive: Some(129_364_254),
@@ -1353,7 +1333,7 @@ async fn detects_ref_swap_by_output() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 131_092_276,
             end_exclusive: Some(131_092_280),
@@ -1439,7 +1419,7 @@ async fn detects_ref_swap_by_output_transfer() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 142_760_523,
             end_exclusive: Some(142_760_532),
@@ -1537,7 +1517,7 @@ async fn detects_aidols_buy() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 176287820,
             end_exclusive: Some(176287830),
@@ -1631,7 +1611,7 @@ async fn detects_aidols_sell() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 137409038,
             end_exclusive: Some(137409042),
@@ -1718,7 +1698,7 @@ async fn detects_aidols_state_changes() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 137406979,
             end_exclusive: Some(137406984),
@@ -1755,7 +1735,7 @@ async fn detects_refdcl_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 143_270_323,
             end_exclusive: Some(143_270_329),
@@ -1833,7 +1813,7 @@ async fn detects_refdcl_swap_by_output_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 217_682_326,
             end_exclusive: Some(217_682_332),
@@ -1923,7 +1903,7 @@ async fn detects_refdcl_pool_state_changes() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 217_682_328,
             end_exclusive: Some(217_682_329),
@@ -1987,7 +1967,7 @@ async fn detects_refdcl_v1_pool_state_changes() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 218_324_945,
             end_exclusive: Some(218_324_946),
@@ -2051,7 +2031,7 @@ async fn detects_ref_degen_pool_state_changes() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 150_611_257,
             end_exclusive: Some(150_611_259),
@@ -2150,7 +2130,7 @@ async fn detects_intear_plach_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 183_810_119,
             end_exclusive: Some(183_810_123),
@@ -2236,7 +2216,7 @@ async fn detects_intear_plach_pool_state_changes() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 219_301_500,
             end_exclusive: Some(219_301_511),
@@ -2296,7 +2276,7 @@ async fn detects_intear_plach_liquidity_add() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 184_680_178,
             end_exclusive: Some(184_680_182),
@@ -2347,7 +2327,7 @@ async fn detects_intear_plach_liquidity_remove() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 184_680_720,
             end_exclusive: Some(184_680_724),
@@ -2398,7 +2378,7 @@ async fn detects_aggregatedex_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 216_110_630,
             end_exclusive: Some(216_110_660),
@@ -2552,7 +2532,7 @@ async fn detects_refdcl_liquidity_add() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 218_422_765,
             end_exclusive: Some(218_422_769),
@@ -2610,7 +2590,7 @@ async fn doesnt_detect_refdcl_fee_claims_as_liquidity_remove() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 218_422_810,
             end_exclusive: Some(218_422_814),
@@ -2632,7 +2612,7 @@ async fn detects_refdcl_liquidity_remove() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 218_404_295,
             end_exclusive: Some(218_404_299),
@@ -2719,7 +2699,7 @@ async fn doesnt_detect_refdcl_limit_orders_as_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 219_513_928,
             end_exclusive: Some(219_513_933),
@@ -2742,7 +2722,7 @@ async fn detects_intear_plach_launch_buys_as_the_dev() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 219_301_500,
             end_exclusive: Some(219_301_511),
@@ -2817,7 +2797,7 @@ async fn detects_aggregatedex_referrer() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 219_924_060,
             end_exclusive: Some(219_924_073),
@@ -2911,7 +2891,7 @@ async fn assert_aggregatedex_referrer(
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive,
             end_exclusive: Some(end_exclusive),
@@ -2946,7 +2926,7 @@ async fn detects_intear_plach_split_route_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 220_224_540,
             end_exclusive: Some(220_224_543),
@@ -3050,7 +3030,7 @@ async fn detects_intear_qoq_trades() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 223_607_488,
             end_exclusive: Some(223_607_493),
@@ -3122,7 +3102,7 @@ async fn detects_intear_qoq_pool_state_changes() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 223_607_488,
             end_exclusive: Some(223_607_493),
@@ -3171,7 +3151,7 @@ async fn detects_intear_qoq_liquidity_add() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 223_603_883,
             end_exclusive: Some(223_603_887),
@@ -3294,7 +3274,7 @@ async fn detects_direct_ref_trades_without_transaction_tree() {
 
     run_indexer(
         &mut indexer,
-        provider(),
+        TeardataProvider::mainnet(),
         options(BlockRange::Range {
             start_inclusive: 176281650,
             end_exclusive: Some(176281660),
