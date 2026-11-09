@@ -1,13 +1,12 @@
 use inindexer::near_utils::{EventLogData, is_receipt_successful};
 use inindexer::{
-    StreamerMessage,
-    near_indexer_primitives::types::AccountId,
+    near_indexer_primitives::{CryptoHash, types::AccountId},
     near_utils::{FtBalance, dec_format},
-    transaction_trees::{ExecutedReceipt, TransactionTree},
+    transaction_trees::ExecutedReceipt,
 };
 use serde::Deserialize;
 
-use crate::{BalanceChangeSwap, PoolId, RawPoolSwap, TradeContext, TradeEventHandler};
+use crate::{BalanceChangeSwap, PoolId, RawPoolSwap, ReceiptEvent, TradeContext};
 
 pub const AIDOLS_CONTRACT_ID: &str = "aidols.near";
 
@@ -30,15 +29,14 @@ struct SwapEvent {
     wnear_hold: FtBalance,
 }
 
-pub async fn detect(
+pub(crate) fn detect(
     receipt: &ExecutedReceipt,
-    transaction: &TransactionTree,
-    block: &StreamerMessage,
-    handler: &mut impl TradeEventHandler,
+    transaction_id: CryptoHash,
     is_testnet: bool,
-) {
+) -> Vec<ReceiptEvent> {
+    let mut events = Vec::new();
     if is_testnet {
-        return;
+        return events;
     }
     if is_receipt_successful(&receipt.receipt) == Some(true)
         && receipt.receipt.receipt.receiver_id == AIDOLS_CONTRACT_ID
@@ -50,9 +48,9 @@ pub async fn detect(
                 for swap in event.data {
                     let context = TradeContext {
                         trader: swap.user_id.clone(),
-                        block_height: block.block.header.height,
-                        block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
-                        transaction_id: transaction.transaction.transaction.hash,
+                        block_height: receipt.block_height,
+                        block_timestamp_nanosec: receipt.block_timestamp_nanosec,
+                        transaction_id,
                         receipt_id: receipt.receipt.receipt.receipt_id,
                     };
                     let token = if swap.input_token == "wrap.near" {
@@ -69,18 +67,22 @@ pub async fn detect(
                         amount_out: swap.output_amount,
                         referrer: swap.referral_id,
                     };
-                    handler
-                        .on_raw_pool_swap(context.clone(), raw_pool_swap.clone())
-                        .await;
+                    events.push(ReceiptEvent::PoolSwap {
+                        context: context.clone(),
+                        swap: raw_pool_swap.clone(),
+                    });
                     if let Some(balance_changes) = BalanceChangeSwap::new(vec![raw_pool_swap]) {
-                        handler
-                            .on_balance_change_swap(context, balance_changes, referrer)
-                            .await;
+                        events.push(ReceiptEvent::BalanceChangeSwap {
+                            context,
+                            balance_changes,
+                            referrer,
+                        });
                     }
                 }
             }
         }
     }
+    events
 }
 
 pub fn create_aidols_pool_id(token_id: &AccountId) -> PoolId {

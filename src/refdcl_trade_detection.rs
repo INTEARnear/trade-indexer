@@ -1,17 +1,15 @@
 use inindexer::near_indexer_primitives::views::{ActionView, ReceiptEnumView};
 use inindexer::near_utils::{EventLogData, FtBalance, is_receipt_successful};
 use inindexer::{
-    StreamerMessage,
-    near_indexer_primitives::types::AccountId,
+    near_indexer_primitives::{CryptoHash, types::AccountId},
     near_utils::dec_format,
     transaction_trees::{ExecutedReceipt, TransactionTree},
 };
 use serde::Deserialize;
 
 use crate::{
-    BalanceChangeSwap, LiquidityChangeKind, PoolId, RawPoolSwap, TradeContext, TradeEventHandler,
+    BalanceChangeSwap, LiquidityChangeKind, PoolId, RawPoolSwap, ReceiptEvent, TradeContext,
     aggregatedex::{AGGREGATEDEX_CONTRACT_ID, aggregatedex_trade},
-    report_liquidity,
 };
 
 pub const REFDCL_CONTRACT_ID: &str = "dclv2.ref-labs.near";
@@ -84,16 +82,16 @@ enum TokenReceiverMessage {
     },
 }
 
-pub async fn detect(
+pub(crate) fn detect(
     receipt: &ExecutedReceipt,
-    transaction: &TransactionTree,
-    block: &StreamerMessage,
-    handler: &mut impl TradeEventHandler,
+    transaction_id: CryptoHash,
+    transaction: Option<&TransactionTree>,
     is_testnet: bool,
-) {
+) -> Vec<ReceiptEvent> {
+    let mut events = Vec::new();
     if is_testnet {
         // CA is unknown on testnet
-        return;
+        return events;
     }
     if is_receipt_successful(&receipt.receipt) == Some(true)
         && receipt.receipt.receipt.receiver_id == REFDCL_CONTRACT_ID
@@ -130,17 +128,18 @@ pub async fn detect(
                     if swap.amount_in == 0 && swap.amount_out == 0 {
                         continue;
                     }
-                    let (trader, referrer) = if swap.swapper == AGGREGATEDEX_CONTRACT_ID {
-                        let (ad_trader, ad_referrer) = aggregatedex_trade(receipt, transaction);
-                        (ad_trader, ad_referrer.or(referrer.clone()))
-                    } else {
-                        (swap.swapper, referrer.clone())
+                    let (trader, referrer) = match transaction {
+                        Some(transaction) if swap.swapper == AGGREGATEDEX_CONTRACT_ID => {
+                            let (ad_trader, ad_referrer) = aggregatedex_trade(receipt, transaction);
+                            (ad_trader, ad_referrer.or(referrer.clone()))
+                        }
+                        _ => (swap.swapper, referrer.clone()),
                     };
                     let context = TradeContext {
                         trader,
-                        block_height: block.block.header.height,
-                        block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
-                        transaction_id: transaction.transaction.transaction.hash,
+                        block_height: receipt.block_height,
+                        block_timestamp_nanosec: receipt.block_timestamp_nanosec,
+                        transaction_id,
                         receipt_id: receipt.receipt.receipt.receipt_id,
                     };
                     let raw_pool_swap = RawPoolSwap {
@@ -151,9 +150,10 @@ pub async fn detect(
                         amount_out: swap.amount_out,
                         referrer: referrer.clone(),
                     };
-                    handler
-                        .on_raw_pool_swap(context.clone(), raw_pool_swap.clone())
-                        .await;
+                    events.push(ReceiptEvent::PoolSwap {
+                        context: context.clone(),
+                        swap: raw_pool_swap.clone(),
+                    });
                     if merged_context.is_none() {
                         merged_context = Some(context);
                     }
@@ -221,33 +221,30 @@ pub async fn detect(
                 };
                 let context = TradeContext {
                     trader: owner_id,
-                    block_height: block.block.header.height,
-                    block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
-                    transaction_id: transaction.transaction.transaction.hash,
+                    block_height: receipt.block_height,
+                    block_timestamp_nanosec: receipt.block_timestamp_nanosec,
+                    transaction_id,
                     receipt_id: receipt.receipt.receipt.receipt_id,
                 };
-                report_liquidity(
-                    handler,
+                events.push(ReceiptEvent::Liquidity {
                     context,
-                    create_refdcl_pool_id(&pool_id),
+                    pool: create_refdcl_pool_id(&pool_id),
                     kind,
-                    vec![(token_x, amount_x), (token_y, amount_y)],
-                )
-                .await;
+                    tokens: vec![(token_x, amount_x), (token_y, amount_y)],
+                });
             }
         }
         if let Some(context) = merged_context
             && let Some(balance_changes) = BalanceChangeSwap::new(merged_pool_swaps)
         {
-            handler
-                .on_balance_change_swap(
-                    context,
-                    balance_changes,
-                    merged_referrer.map(|id| id.to_string()),
-                )
-                .await;
+            events.push(ReceiptEvent::BalanceChangeSwap {
+                context,
+                balance_changes,
+                referrer: merged_referrer.map(|id| id.to_string()),
+            });
         }
     }
+    events
 }
 
 pub fn create_refdcl_pool_id(pool_id: &str) -> PoolId {

@@ -1,7 +1,7 @@
 use inindexer::near_utils::{dec_format_vec, is_receipt_successful};
 use inindexer::{
-    StreamerMessage,
     near_indexer_primitives::{
+        CryptoHash,
         types::AccountId,
         views::{ActionView, ReceiptEnumView},
     },
@@ -11,26 +11,25 @@ use inindexer::{
 use serde::Deserialize;
 
 use crate::{
-    BalanceChangeSwap, LiquidityChangeKind, PoolId, RawPoolSwap, TradeContext, TradeEventHandler,
+    BalanceChangeSwap, LiquidityChangeKind, PoolId, RawPoolSwap, ReceiptEvent, TradeContext,
     aggregatedex::{AGGREGATEDEX_CONTRACT_ID, aggregatedex_trade},
-    report_liquidity,
 };
 
 pub const TESTNET_REF_CONTRACT_ID: &str = "ref-finance-101.testnet";
 pub const REF_CONTRACT_ID: &str = "v2.ref-finance.near";
 
-pub async fn detect(
+pub(crate) fn detect(
     receipt: &ExecutedReceipt,
-    transaction: &TransactionTree,
-    block: &StreamerMessage,
-    handler: &mut impl TradeEventHandler,
+    transaction_id: CryptoHash,
+    transaction: Option<&TransactionTree>,
     is_testnet: bool,
-) {
+) -> Vec<ReceiptEvent> {
     let ref_contract_id = if is_testnet {
         TESTNET_REF_CONTRACT_ID
     } else {
         REF_CONTRACT_ID
     };
+    let mut events = Vec::new();
     if is_receipt_successful(&receipt.receipt) == Some(true)
         && receipt.receipt.receipt.receiver_id == ref_contract_id
     {
@@ -45,12 +44,8 @@ pub async fn detect(
                 } = action
                 {
                     if method_name == "ft_on_transfer" {
-                        if let Some(caller_receipt) =
-                            transaction.parent(&receipt.receipt.receipt.receipt_id)
-                        {
-                            trader = caller_receipt.receipt.receipt.predecessor_id.clone();
-                        }
                         if let Ok(call) = serde_json::from_slice::<FtTransferCallArgs>(args) {
+                            trader = call.sender_id;
                             if let Ok(call) =
                                 serde_json::from_str::<FtTransferCallArgsExecute>(&call.msg)
                             {
@@ -151,7 +146,9 @@ pub async fn detect(
             }
         }
 
-        if trader == "ref.hot.tg" {
+        if trader == "ref.hot.tg"
+            && let Some(transaction) = transaction
+        {
             if let Some(grandparent) = transaction
                 .ancestors(&receipt.receipt.receipt.receipt_id)
                 .nth(1)
@@ -159,15 +156,16 @@ pub async fn detect(
                 trader = grandparent.receipt.receipt.predecessor_id.clone();
             } else {
                 log::warn!(
-                    "Could not find the grandparent receipt of the ref.hot.tg trade {:?}",
-                    transaction.transaction.transaction.hash
+                    "Could not find the grandparent receipt of the ref.hot.tg trade {transaction_id:?}"
                 );
-                return;
+                return events;
             }
         }
 
         // aggregatedex.near passes Ref its own referral, rather than its user's
-        if trader == AGGREGATEDEX_CONTRACT_ID {
+        if trader == AGGREGATEDEX_CONTRACT_ID
+            && let Some(transaction) = transaction
+        {
             let (ad_trader, ad_referrer) = aggregatedex_trade(receipt, transaction);
             trader = ad_trader;
             referrer = ad_referrer.or(referrer);
@@ -175,14 +173,19 @@ pub async fn detect(
 
         let context = TradeContext {
             trader,
-            block_height: block.block.header.height,
-            block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
-            transaction_id: transaction.transaction.transaction.hash,
+            block_height: receipt.block_height,
+            block_timestamp_nanosec: receipt.block_timestamp_nanosec,
+            transaction_id,
             receipt_id: receipt.receipt.receipt.receipt_id,
         };
 
         for (pool, kind, tokens) in liquidity_changes {
-            report_liquidity(handler, context.clone(), pool, kind, tokens).await;
+            events.push(ReceiptEvent::Liquidity {
+                context: context.clone(),
+                pool,
+                kind,
+                tokens,
+            });
         }
 
         let mut swap_logs_in_receipt = Vec::new();
@@ -216,11 +219,10 @@ pub async fn detect(
 
         if swap_action_pools.len() != swap_logs_in_receipt.len() {
             log::warn!(
-                "Invalid number of actions found in receipt {:?} for transaction {:?}: {swap_action_pools:?}",
+                "Invalid number of actions found in receipt {:?} for transaction {transaction_id:?}: {swap_action_pools:?}",
                 receipt.receipt.receipt.receipt,
-                transaction.transaction.transaction.hash
             );
-            return;
+            return events;
         }
 
         let raw_pool_swaps = swap_action_pools
@@ -238,16 +240,20 @@ pub async fn detect(
             )
             .collect::<Vec<_>>();
         for raw_pool_swap in raw_pool_swaps.clone() {
-            handler
-                .on_raw_pool_swap(context.clone(), raw_pool_swap)
-                .await;
+            events.push(ReceiptEvent::PoolSwap {
+                context: context.clone(),
+                swap: raw_pool_swap,
+            });
         }
         if let Some(balance_changes) = BalanceChangeSwap::new(raw_pool_swaps) {
-            handler
-                .on_balance_change_swap(context, balance_changes, referrer.map(|id| id.to_string()))
-                .await;
+            events.push(ReceiptEvent::BalanceChangeSwap {
+                context,
+                balance_changes,
+                referrer: referrer.map(|id| id.to_string()),
+            });
         }
     }
+    events
 }
 
 /// `amount token", "amount token", ...`, without the outer quotes
@@ -281,6 +287,8 @@ struct MethodExecuteActions {
 
 #[derive(Deserialize, Debug)]
 struct FtTransferCallArgs {
+    /// Who called `ft_transfer_call` on the token
+    sender_id: AccountId,
     /// Json string that represents either FtTransferCallExecute or FtTransferCallHotZap
     msg: String,
 }

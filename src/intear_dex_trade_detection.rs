@@ -1,12 +1,9 @@
 use amp_dex_types::AmpDexEvent;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use inindexer::near_indexer_primitives::types::AccountId;
+use inindexer::near_indexer_primitives::{CryptoHash, types::AccountId};
 use inindexer::near_utils::{EventLogData, is_receipt_successful};
-use inindexer::{
-    StreamerMessage,
-    transaction_trees::{ExecutedReceipt, TransactionTree},
-};
+use inindexer::transaction_trees::{ExecutedReceipt, TransactionTree};
 use intear_dex_common::{AssetId, AssetWithBalance, DexId};
 use intear_dex_types::{DexEventData, IntearDexEvent};
 use intear_events::events::trade::trade_pool_change::{
@@ -21,7 +18,7 @@ use xyk_dex_types::{
 
 use crate::{
     BalanceChangeSwap, LiquidityChangeKind, PoolChangeEvent, PoolId, PoolType, RawPoolSwap,
-    TradeContext, TradeEventHandler, report_liquidity,
+    ReceiptEvent, TradeContext,
 };
 
 pub const INTEAR_CONTRACT_ID: &str = "dex.intear.near";
@@ -40,16 +37,16 @@ fn decode_borsh_dex_events(encoded: &str) -> Result<Vec<DexEventData>, String> {
     near_sdk::borsh::from_slice(&decompressed).map_err(|err| err.to_string())
 }
 
-pub async fn detect(
+pub(crate) fn detect(
     receipt: &ExecutedReceipt,
-    transaction: &TransactionTree,
-    block: &StreamerMessage,
-    handler: &mut impl TradeEventHandler,
+    transaction_id: CryptoHash,
+    transaction: Option<&TransactionTree>,
     is_testnet: bool,
-) {
+) -> Vec<ReceiptEvent> {
+    let mut events = Vec::new();
     if is_testnet {
         // Not deployed on testnet
-        return;
+        return events;
     }
     if is_receipt_successful(&receipt.receipt) == Some(true)
         && receipt.receipt.receipt.receiver_id == INTEAR_CONTRACT_ID
@@ -142,7 +139,7 @@ pub async fn detect(
                 match event {
                     Ok(event) => plach_change(event),
                     Err(err) => {
-                        if block.block.header.height > 187015239 {
+                        if receipt.block_height > 187015239 {
                             panic!(
                                 "Couldn't parse plach event in receipt {}: {err}",
                                 receipt.receipt.receipt.receipt_id
@@ -176,9 +173,9 @@ pub async fn detect(
             };
             let context = |trader: AccountId| TradeContext {
                 trader,
-                block_height: block.block.header.height,
-                block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
-                transaction_id: transaction.transaction.transaction.hash,
+                block_height: receipt.block_height,
+                block_timestamp_nanosec: receipt.block_timestamp_nanosec,
+                transaction_id,
                 receipt_id: receipt.receipt.receipt.receipt_id,
             };
 
@@ -191,7 +188,9 @@ pub async fn detect(
                     amount_out,
                 } => {
                     let Some(mut user) = user else { continue };
-                    if INTEAR_LAUNCH_CONTRACT_IDS.contains(&user.as_str()) {
+                    if INTEAR_LAUNCH_CONTRACT_IDS.contains(&user.as_str())
+                        && let Some(transaction) = transaction
+                    {
                         match transaction
                             .ancestors(&receipt.receipt.receipt.receipt_id)
                             .find(|ancestor| ancestor.receipt.receipt.receiver_id == user)
@@ -200,8 +199,7 @@ pub async fn detect(
                                 user = launch_call.receipt.receipt.predecessor_id.clone()
                             }
                             None => log::warn!(
-                                "Could not find who called {user} for the swap {:?}",
-                                transaction.transaction.transaction.hash
+                                "Could not find who called {user} for the swap {transaction_id:?}"
                             ),
                         }
                     }
@@ -224,9 +222,10 @@ pub async fn detect(
                         amount_out,
                         referrer,
                     };
-                    handler
-                        .on_raw_pool_swap(context, raw_pool_swap.clone())
-                        .await;
+                    events.push(ReceiptEvent::PoolSwap {
+                        context,
+                        swap: raw_pool_swap.clone(),
+                    });
                     merged_pool_swaps.push(raw_pool_swap);
                 }
                 DexChange::Liquidity {
@@ -241,25 +240,21 @@ pub async fn detect(
                     let Some(asset_1) = nep141_or_near(asset_1) else {
                         continue;
                     };
-                    report_liquidity(
-                        handler,
-                        context(user),
-                        pool_id,
+                    events.push(ReceiptEvent::Liquidity {
+                        context: context(user),
+                        pool: pool_id,
                         kind,
-                        vec![(asset_0, amount_0), (asset_1, amount_1)],
-                    )
-                    .await;
+                        tokens: vec![(asset_0, amount_0), (asset_1, amount_1)],
+                    });
                 }
                 DexChange::PoolUpdated { pool_id, pool } => {
-                    handler
-                        .on_pool_change(PoolChangeEvent {
-                            pool_id,
-                            receipt_id: receipt.receipt.receipt.receipt_id,
-                            block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
-                            block_height: block.block.header.height,
-                            pool,
-                        })
-                        .await;
+                    events.push(ReceiptEvent::PoolChange(PoolChangeEvent {
+                        pool_id,
+                        receipt_id: receipt.receipt.receipt.receipt_id,
+                        block_timestamp_nanosec: receipt.block_timestamp_nanosec,
+                        block_height: receipt.block_height,
+                        pool,
+                    }));
                 }
             }
         }
@@ -267,15 +262,14 @@ pub async fn detect(
         if let Some(context) = merged_context
             && let Some(balance_changes) = BalanceChangeSwap::new(merged_pool_swaps)
         {
-            handler
-                .on_balance_change_swap(
-                    context,
-                    balance_changes,
-                    merged_referrer.map(|id| id.to_string()),
-                )
-                .await;
+            events.push(ReceiptEvent::BalanceChangeSwap {
+                context,
+                balance_changes,
+                referrer: merged_referrer.map(|id| id.to_string()),
+            });
         }
     }
+    events
 }
 
 /// What an event of a DEX on Intear DEX changes, which is indexed the same for every DEX

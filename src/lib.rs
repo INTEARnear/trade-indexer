@@ -4,7 +4,7 @@ use aidols_trade_detection::AIDOLS_CONTRACT_ID;
 use async_trait::async_trait;
 use borsh::BorshDeserialize;
 use inindexer::near_utils::FtBalance;
-use inindexer::transaction_trees::TransactionTree;
+use inindexer::transaction_trees::{ExecutedReceipt, TransactionTree};
 use inindexer::{
     Indexer, IndexerExecutionOutcomeWithReceipt, StreamerMessage,
     near_indexer_primitives::{
@@ -262,43 +262,40 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
         &mut self,
         receipt: &IndexerExecutionOutcomeWithReceipt,
         transaction: &TransactionTree,
-        block: &StreamerMessage,
+        _block: &StreamerMessage,
     ) -> Result<(), Self::Error> {
         let receipt = transaction
             .receipt(&receipt.receipt.receipt_id)
             .expect("The tree has the receipts of the block it comes with");
-        ref_trade_detection::detect(
+        let events = receipt_events(
             receipt,
-            transaction,
-            block,
-            &mut self.handler,
+            transaction.transaction.transaction.hash,
+            Some(transaction),
             self.is_testnet,
-        )
-        .await;
-        aidols_trade_detection::detect(
-            receipt,
-            transaction,
-            block,
-            &mut self.handler,
-            self.is_testnet,
-        )
-        .await;
-        refdcl_trade_detection::detect(
-            receipt,
-            transaction,
-            block,
-            &mut self.handler,
-            self.is_testnet,
-        )
-        .await;
-        intear_dex_trade_detection::detect(
-            receipt,
-            transaction,
-            block,
-            &mut self.handler,
-            self.is_testnet,
-        )
-        .await;
+        );
+        for event in events {
+            match event {
+                ReceiptEvent::PoolSwap { context, swap } => {
+                    self.handler.on_raw_pool_swap(context, swap).await
+                }
+                ReceiptEvent::BalanceChangeSwap {
+                    context,
+                    balance_changes,
+                    referrer,
+                } => {
+                    self.handler
+                        .on_balance_change_swap(context, balance_changes, referrer)
+                        .await
+                }
+                ReceiptEvent::Liquidity {
+                    context,
+                    pool,
+                    kind,
+                    tokens,
+                } => report_liquidity(&mut self.handler, context, pool, kind, tokens).await,
+                ReceiptEvent::PoolChange(pool) => self.handler.on_pool_change(pool).await,
+            }
+        }
         Ok(())
     }
 
@@ -306,6 +303,46 @@ impl<T: TradeEventHandler> Indexer for TradeIndexer<T> {
         self.handler.flush_events(block.block.header.height).await;
         Ok(())
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ReceiptEvent {
+    PoolSwap {
+        context: TradeContext,
+        swap: RawPoolSwap,
+    },
+    BalanceChangeSwap {
+        context: TradeContext,
+        balance_changes: BalanceChangeSwap,
+        referrer: Option<String>,
+    },
+    Liquidity {
+        context: TradeContext,
+        pool: PoolId,
+        kind: LiquidityChangeKind,
+        tokens: Vec<(AccountId, FtBalance)>,
+    },
+    PoolChange(PoolChangeEvent),
+}
+
+/// The trades, liquidity changes and pool changes of a receipt on the DEXes this indexes. With
+/// the tree of the receipt's transaction, the trader is the user behind aggregatedex.near,
+/// rather than the contract that traded for them.
+pub fn receipt_events(
+    receipt: &ExecutedReceipt,
+    transaction_id: CryptoHash,
+    transaction: Option<&TransactionTree>,
+    is_testnet: bool,
+) -> Vec<ReceiptEvent> {
+    [
+        ref_trade_detection::detect(receipt, transaction_id, transaction, is_testnet),
+        aidols_trade_detection::detect(receipt, transaction_id, is_testnet),
+        refdcl_trade_detection::detect(receipt, transaction_id, transaction, is_testnet),
+        intear_dex_trade_detection::detect(receipt, transaction_id, transaction, is_testnet),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -373,7 +410,7 @@ pub struct LiquidityChange {
 
 /// Reports a liquidity change to both `on_liquidity_pool` and, for a pool of two tokens,
 /// `on_liquidity_change`. on_liquidity_pool is not reported if an amount doesn't fit in i128.
-pub(crate) async fn report_liquidity(
+async fn report_liquidity(
     handler: &mut impl TradeEventHandler,
     context: TradeContext,
     pool: PoolId,

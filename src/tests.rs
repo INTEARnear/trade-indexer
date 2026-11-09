@@ -9,11 +9,17 @@ use intear_events::events::trade::trade_pool_change::{
 };
 use std::collections::HashMap;
 
-use inindexer::{IndexerOptions, near_indexer_primitives::types::AccountId, run_indexer};
+use inindexer::{
+    Indexer, IndexerExecutionOutcomeWithReceipt, IndexerOptions, StreamerMessage,
+    near_indexer_primitives::types::AccountId,
+    run_indexer,
+    transaction_trees::{ExecutedReceipt, TransactionTree},
+};
 
 use crate::{
     BalanceChangeSwap, LiquidityChange, LiquidityChangeKind, PoolChangeEvent, PoolId, PoolType,
-    RawPoolSwap, TradeContext, TradeEventHandler, TradeIndexer, ref_finance_state,
+    RawPoolSwap, ReceiptEvent, TradeContext, TradeEventHandler, TradeIndexer, receipt_events,
+    ref_finance_state,
 };
 
 #[derive(Default)]
@@ -3248,5 +3254,117 @@ async fn detects_intear_qoq_liquidity_add() {
             "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
             74000000
         )
+    );
+}
+
+/// Detects with only the receipts, as someone without the transaction trees would
+#[derive(Default)]
+struct ReceiptsOnlyIndexer {
+    events: Vec<ReceiptEvent>,
+}
+
+#[async_trait]
+impl Indexer for ReceiptsOnlyIndexer {
+    type Error = String;
+
+    async fn process_receipt(
+        &mut self,
+        receipt: &IndexerExecutionOutcomeWithReceipt,
+        transaction: &TransactionTree,
+        block: &StreamerMessage,
+    ) -> Result<(), Self::Error> {
+        let receipt = ExecutedReceipt {
+            receipt: receipt.clone(),
+            block_height: block.block.header.height,
+            block_timestamp_nanosec: block.block.header.timestamp_nanosec as u128,
+        };
+        self.events.extend(receipt_events(
+            &receipt,
+            transaction.transaction.transaction.hash,
+            None,
+            false,
+        ));
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn detects_direct_ref_trades_without_transaction_tree() {
+    let mut indexer = ReceiptsOnlyIndexer::default();
+
+    run_indexer(
+        &mut indexer,
+        provider(),
+        options(BlockRange::Range {
+            start_inclusive: 176281650,
+            end_exclusive: Some(176281660),
+        }),
+    )
+    .await
+    .unwrap();
+
+    let trades = indexer
+        .events
+        .into_iter()
+        .filter(|event| match event {
+            ReceiptEvent::PoolSwap { context, .. }
+            | ReceiptEvent::BalanceChangeSwap { context, .. } => {
+                context.trader == "slimedragon.near"
+            }
+            ReceiptEvent::Liquidity { .. } | ReceiptEvent::PoolChange(_) => false,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        trades,
+        vec![
+            ReceiptEvent::PoolSwap {
+                context: TradeContext {
+                    trader: "slimedragon.near".parse().unwrap(),
+                    block_height: 176281654,
+                    block_timestamp_nanosec: 1765398885775797408,
+                    transaction_id: "DuwK7zJfaArmEvSZ29KsZhRAMyZ9GuMmXtE5BUX4vaHT"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "B7pQmNfMQ8j6zBYRnzRsUoNw8mkPmDArWz8vff7X7TFS"
+                        .parse()
+                        .unwrap(),
+                },
+                swap: RawPoolSwap {
+                    pool: "REF-5515".to_owned(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                        .parse()
+                        .unwrap(),
+                    amount_in: 1000000000000000000000000,
+                    amount_out: 1833478,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
+                },
+            },
+            ReceiptEvent::BalanceChangeSwap {
+                context: TradeContext {
+                    trader: "slimedragon.near".parse().unwrap(),
+                    block_height: 176281654,
+                    block_timestamp_nanosec: 1765398885775797408,
+                    transaction_id: "DuwK7zJfaArmEvSZ29KsZhRAMyZ9GuMmXtE5BUX4vaHT"
+                        .parse()
+                        .unwrap(),
+                    receipt_id: "B7pQmNfMQ8j6zBYRnzRsUoNw8mkPmDArWz8vff7X7TFS"
+                        .parse()
+                        .unwrap(),
+                },
+                balance_changes: BalanceChangeSwap::new(vec![RawPoolSwap {
+                    pool: "REF-5515".to_owned(),
+                    token_in: "wrap.near".parse().unwrap(),
+                    token_out: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                        .parse()
+                        .unwrap(),
+                    amount_in: 1000000000000000000000000,
+                    amount_out: 1833478,
+                    referrer: Some("dex-aggregator.intear.near".parse().unwrap()),
+                }])
+                .unwrap(),
+                referrer: Some("dex-aggregator.intear.near".to_string()),
+            },
+        ]
     );
 }
