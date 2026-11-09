@@ -3348,3 +3348,60 @@ async fn detects_direct_ref_trades_without_transaction_tree() {
         ]
     );
 }
+
+#[tokio::test]
+async fn detects_intear_referral_fees_as_paid_by_the_trader() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        TeardataProvider::mainnet(),
+        options(BlockRange::Range {
+            start_inclusive: 223_703_358,
+            end_exclusive: Some(223_703_364),
+        }),
+    )
+    .await
+    .unwrap();
+
+    let [(balance_changes, context, referrer)] = indexer
+        .handler
+        .balance_change_swaps
+        .get(&"vespera05.near".parse::<AccountId>().unwrap())
+        .unwrap()
+        .as_slice()
+    else {
+        panic!("Expected one trade of vespera05.near");
+    };
+    // The pools got 1399860000000000000000000000000, and wallet.intear.near and
+    // dex-aggregator.intear.near got 112000000000000000000000000 and 28000000000000000000000000
+    assert_eq!(
+        balance_changes.balance_changes,
+        HashMap::from_iter([
+            (
+                "salty-1.launch-v2.intear.near".parse().unwrap(),
+                -1400000000000000000000000000000
+            ),
+            ("near".parse().unwrap(), 1561673786768158510659420),
+        ])
+    );
+    assert_eq!(balance_changes.pool_swaps.len(), 6);
+    assert_eq!(
+        *context,
+        TradeContext {
+            trader: "vespera05.near".parse().unwrap(),
+            block_height: 223703360,
+            block_timestamp_nanosec: 1794190919852178610,
+            transaction_id: "ChoEn29LyhXfv1Tt5Fd11G4pSAJr61kJadC46ucYjpCc"
+                .parse()
+                .unwrap(),
+            receipt_id: "5wfZWDv5kch2PgvScArA9Qexb9ywuTqgD9eRv4MUSusW"
+                .parse()
+                .unwrap(),
+        }
+    );
+    assert_eq!(referrer.as_deref(), Some("wallet.intear.near"));
+}

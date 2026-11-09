@@ -260,8 +260,38 @@ pub(crate) fn detect(
         }
 
         if let Some(context) = merged_context
-            && let Some(balance_changes) = BalanceChangeSwap::new(merged_pool_swaps)
+            && let Some(mut balance_changes) = BalanceChangeSwap::new(merged_pool_swaps)
         {
+            // The dex events have what the pools got, and the trader pays referral fees on top
+            let referral_fees = receipt
+                .receipt
+                .execution_outcome
+                .outcome
+                .logs
+                .iter()
+                .filter_map(|log| {
+                    serde_json::from_str::<IntearDexEvent>(log.strip_prefix("EVENT_JSON:")?).ok()
+                })
+                .filter_map(|event| match event {
+                    IntearDexEvent::Swap {
+                        request,
+                        referral_fees_paid,
+                        ..
+                    } => Some((nep141_or_near(request.asset_in)?, referral_fees_paid)),
+                    _ => None,
+                });
+            for (asset_in, fees) in referral_fees {
+                for (_referrer, fee) in fees {
+                    let Ok(fee) = i128::try_from(fee.get()) else {
+                        log::warn!("Referral fee overflow: {fee} of {asset_in}");
+                        continue;
+                    };
+                    *balance_changes
+                        .balance_changes
+                        .entry(asset_in.clone())
+                        .or_insert(0) -= fee;
+                }
+            }
             events.push(ReceiptEvent::BalanceChangeSwap {
                 context,
                 balance_changes,
