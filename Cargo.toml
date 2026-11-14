@@ -29,10 +29,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 borsh = { version = "1", features = ["derive"] }
 intear-events = { git = "https://github.com/INTEARnear/intear-events" }
-intear-dex-types = { git = "https://github.com/INTEARnear/dex", rev = "6895c0d01906ccca1e7363b5fecf2cef537acb06" }
-intear-dex-common = { git = "https://github.com/INTEARnear/dex", rev = "6895c0d01906ccca1e7363b5fecf2cef537acb06" }
-amp-dex-types = { git = "https://github.com/INTEARnear/dex", rev = "6895c0d01906ccca1e7363b5fecf2cef537acb06" }
-xyk-dex-types = { git = "https://github.com/INTEARnear/dex", rev = "6895c0d01906ccca1e7363b5fecf2cef537acb06" }
+intear-dex-types = { git = "https://github.com/INTEARnear/dex" }
+intear-dex-common = { git = "https://github.com/INTEARnear/dex" }
+amp-dex-types = { git = "https://github.com/INTEARnear/dex" }
+xyk-dex-types = { git = "https://github.com/INTEARnear/dex" }
 # The dex types are near-sdk types, which only build outside of a contract with this
 near-sdk = { version = "5.30", default-features = false, features = ["non-contract-usage"] }
 base64 = "0.23"

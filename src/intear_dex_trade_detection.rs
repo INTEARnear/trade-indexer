@@ -472,7 +472,7 @@ fn qoq_change(event: AmpDexEvent) -> Option<DexChange> {
                 amplification: pool.amplification.get(),
                 oracle_key: pool.oracle_key.to_string(),
                 last_oracle_price: pool.last_oracle_price.map(|price| price.units()),
-                fee: pool.fee.get(),
+                fee: pool.fees.fraction.get(),
                 total_shares: pool.total_shares.get(),
             }),
         }),
