@@ -477,7 +477,7 @@ fn qoq_change(event: AmpDexEvent) -> Option<DexChange> {
                     },
                     PoolRateSource::Fixed(price) => IntearQoqPoolRateSource::Fixed(price.units()),
                 },
-                fee: pool.fees.fraction.get(),
+                fee: pool.fee.get(),
                 total_shares: pool.total_shares.get(),
             }),
         }),
