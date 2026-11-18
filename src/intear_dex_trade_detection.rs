@@ -1,4 +1,4 @@
-use amp_dex_types::AmpDexEvent;
+use amp_dex_types::{AmpDexEvent, PoolRateSource};
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use inindexer::near_indexer_primitives::{CryptoHash, types::AccountId};
@@ -8,7 +8,7 @@ use intear_dex_common::{AssetId, AssetWithBalance, DexId};
 use intear_dex_types::{DexEventData, IntearDexEvent};
 use intear_events::events::trade::trade_pool_change::{
     IntearAssetId, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachFeeReceiver,
-    IntearPlachPool, IntearQoqPool,
+    IntearPlachPool, IntearQoqPool, IntearQoqPoolRateSource,
 };
 use serde::Deserialize;
 use xyk_dex_types::{
@@ -470,8 +470,13 @@ fn qoq_change(event: AmpDexEvent) -> Option<DexChange> {
                 assets: (intear_asset(pool.assets.0), intear_asset(pool.assets.1)),
                 decimals: pool.decimals,
                 amplification: pool.amplification.get(),
-                oracle_key: pool.oracle_key.to_string(),
-                last_oracle_price: pool.last_oracle_price.map(|price| price.units()),
+                rate_source: match pool.rate_source {
+                    PoolRateSource::Oracle { key, last_price } => IntearQoqPoolRateSource::Oracle {
+                        key: key.to_string(),
+                        last_price: last_price.units(),
+                    },
+                    PoolRateSource::Fixed(price) => IntearQoqPoolRateSource::Fixed(price.units()),
+                },
                 fee: pool.fees.fraction.get(),
                 total_shares: pool.total_shares.get(),
             }),

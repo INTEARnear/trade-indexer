@@ -4,7 +4,7 @@ use inindexer::{
 };
 use intear_events::events::trade::trade_pool_change::{
     AidolsPool, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachFeeReceiver,
-    IntearPlachPool, IntearQoqPool, RefDclPool,
+    IntearPlachPool, IntearQoqPool, IntearQoqPoolRateSource, RefDclPool,
 };
 use std::collections::HashMap;
 
@@ -3134,8 +3134,10 @@ async fn detects_intear_qoq_pool_state_changes() {
             ),
             decimals: (24, 6),
             amplification: 30,
-            oracle_key: "ed25519:7EK1MhudQrXZBZjvnvvcNXiQ2ByYBkXg8rUhbKL69CGo".to_owned(),
-            last_oracle_price: Some(3710834106257699655),
+            rate_source: IntearQoqPoolRateSource::Oracle {
+                key: "ed25519:7EK1MhudQrXZBZjvnvvcNXiQ2ByYBkXg8rUhbKL69CGo".to_owned(),
+                last_price: 3710834106257699655,
+            },
             fee: 500,
             total_shares: 1000000000000000000,
         }),
@@ -3185,8 +3187,10 @@ async fn detects_intear_qoq_liquidity_add() {
                 ),
                 decimals: (24, 6),
                 amplification: 30,
-                oracle_key: "ed25519:7EK1MhudQrXZBZjvnvvcNXiQ2ByYBkXg8rUhbKL69CGo".to_owned(),
-                last_oracle_price: None,
+                rate_source: IntearQoqPoolRateSource::Oracle {
+                    key: "ed25519:7EK1MhudQrXZBZjvnvvcNXiQ2ByYBkXg8rUhbKL69CGo".to_owned(),
+                    last_price: 0,
+                },
                 fee: 500,
                 total_shares: 1000000000000000000,
             }),
