@@ -17,7 +17,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 [[package]]
 name = "amp-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#72bb79d2943a69fbe3369c4d8c6d740737b4f762"
+source = "git+https://github.com/INTEARnear/dex#af3ec57b035a7eb9d2c335459e3e44592f95fd6b"
 dependencies = [
  "ethnum",
  "intear-dex-common",
@@ -1592,7 +1592,7 @@ dependencies = [
 [[package]]
 name = "intear-dex-common"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#72bb79d2943a69fbe3369c4d8c6d740737b4f762"
+source = "git+https://github.com/INTEARnear/dex#af3ec57b035a7eb9d2c335459e3e44592f95fd6b"
 dependencies = [
  "ethnum",
  "near-sdk",
@@ -1601,7 +1601,7 @@ dependencies = [
 [[package]]
 name = "intear-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#72bb79d2943a69fbe3369c4d8c6d740737b4f762"
+source = "git+https://github.com/INTEARnear/dex#af3ec57b035a7eb9d2c335459e3e44592f95fd6b"
 dependencies = [
  "intear-dex-common",
  "near-sdk",
@@ -3425,9 +3425,9 @@ checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
 name = "smallvec"
-version = "1.16.5"
+version = "1.16.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
+checksum = "3244542535d5de959d90ec55d1b5ff0fd2bb7b1310223907d5f11932847f7b59"
 
 [[package]]
 name = "smart-default"
@@ -4390,7 +4390,7 @@ dependencies = [
 [[package]]
 name = "xyk-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#72bb79d2943a69fbe3369c4d8c6d740737b4f762"
+source = "git+https://github.com/INTEARnear/dex#af3ec57b035a7eb9d2c335459e3e44592f95fd6b"
 dependencies = [
  "ethnum",
  "intear-dex-common",
