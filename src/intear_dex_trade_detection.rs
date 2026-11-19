@@ -4,13 +4,15 @@ use base64::prelude::BASE64_STANDARD;
 use inindexer::near_indexer_primitives::{CryptoHash, types::AccountId};
 use inindexer::near_utils::{EventLogData, is_receipt_successful};
 use inindexer::transaction_trees::{ExecutedReceipt, TransactionTree};
-use intear_dex_common::{AssetId, AssetWithBalance, DexId};
-use intear_dex_types::{DexEventData, IntearDexEvent};
+use intear_dex_common::{
+    AssetId, AssetWithBalance, DexId, SwapRequest, SwapRequestAmount, TokenAmount,
+};
+use intear_dex_types::DexEventData;
 use intear_events::events::trade::trade_pool_change::{
     IntearAssetId, IntearAssetWithBalance, IntearPlachFeeConfiguration, IntearPlachFeeReceiver,
     IntearPlachPool, IntearQoqPool, IntearQoqPoolRateSource,
 };
-use serde::Deserialize;
+use serde::{Deserialize, de::IgnoredAny};
 use xyk_dex_types::{
     ClaimMode, CurrentFees, FeeReceiver, PROTOCOL_FEE_RECEIVER_ID, PoolView, XykDexEvent,
     XykDexEventV1,
@@ -93,10 +95,11 @@ pub(crate) fn detect(
                         user: event.data.user,
                     }];
                 }
-                if let Some(json) = log.strip_prefix("EVENT_JSON:")
-                    && let Ok(IntearDexEvent::DexEventsBorsh(encoded)) = serde_json::from_str(json)
+                if let Ok(event) = EventLogData::<String>::deserialize(log)
+                    && event.standard == "inteardex"
+                    && event.event == "dex_events_borsh"
                 {
-                    return match decode_borsh_dex_events(&encoded) {
+                    return match decode_borsh_dex_events(&event.data) {
                         Ok(dex_events) => dex_events
                             .into_iter()
                             .map(|dex_event| LoggedDexEventData {
@@ -262,34 +265,55 @@ pub(crate) fn detect(
         if let Some(context) = merged_context
             && let Some(mut balance_changes) = BalanceChangeSwap::new(merged_pool_swaps)
         {
-            // The dex events have what the pools got, and the trader pays referral fees on top
-            let referral_fees = receipt
+            // The dex events have what the pools got. The trader pays referral fees on top of the
+            // input, and the quote improvement fee out of the output of an exact-in swap, or on
+            // top of the input of an exact-out one.
+            #[derive(Deserialize)]
+            struct EngineSwapEventData {
+                request: SwapRequest,
+                #[serde(default)]
+                referral_fees_paid: Vec<(IgnoredAny, TokenAmount)>,
+                quote_improvement_fee_paid: Option<(IgnoredAny, TokenAmount)>,
+            }
+            let engine_swaps = receipt
                 .receipt
                 .execution_outcome
                 .outcome
                 .logs
                 .iter()
-                .filter_map(|log| {
-                    serde_json::from_str::<IntearDexEvent>(log.strip_prefix("EVENT_JSON:")?).ok()
-                })
-                .filter_map(|event| match event {
-                    IntearDexEvent::Swap {
+                .filter_map(|log| EventLogData::<EngineSwapEventData>::deserialize(log).ok())
+                .filter(|event| event.standard == "inteardex" && event.event == "swap");
+            for EventLogData {
+                data:
+                    EngineSwapEventData {
                         request,
                         referral_fees_paid,
-                        ..
-                    } => Some((nep141_or_near(request.asset_in)?, referral_fees_paid)),
-                    _ => None,
-                });
-            for (asset_in, fees) in referral_fees {
-                for (_referrer, fee) in fees {
-                    let Ok(fee) = i128::try_from(fee.get()) else {
-                        log::warn!("Referral fee overflow: {fee} of {asset_in}");
+                        quote_improvement_fee_paid,
+                    },
+                ..
+            } in engine_swaps
+            {
+                let quote_improvement_fee_asset = match request.amount {
+                    SwapRequestAmount::ExactIn(_) => &request.asset_out,
+                    SwapRequestAmount::ExactOut(_) => &request.asset_in,
+                };
+                let fees = referral_fees_paid
+                    .iter()
+                    .map(|(_referrer, fee)| (&request.asset_in, fee))
+                    .chain(
+                        quote_improvement_fee_paid
+                            .iter()
+                            .map(|(_receiver, fee)| (quote_improvement_fee_asset, fee)),
+                    );
+                for (asset, fee) in fees {
+                    let Some(asset) = nep141_or_near(asset.clone()) else {
                         continue;
                     };
-                    *balance_changes
-                        .balance_changes
-                        .entry(asset_in.clone())
-                        .or_insert(0) -= fee;
+                    let Ok(fee) = i128::try_from(fee.get()) else {
+                        log::warn!("Fee overflow: {fee} of {asset}");
+                        continue;
+                    };
+                    *balance_changes.balance_changes.entry(asset).or_insert(0) -= fee;
                 }
             }
             events.push(ReceiptEvent::BalanceChangeSwap {

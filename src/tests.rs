@@ -3383,16 +3383,67 @@ async fn detects_intear_referral_fees_as_paid_by_the_trader() {
     // The pools got 1399860000000000000000000000000, and wallet.intear.near and
     // dex-aggregator.intear.near got 112000000000000000000000000 and 28000000000000000000000000
     assert_eq!(
-        balance_changes.balance_changes,
-        HashMap::from_iter([
-            (
-                "salty-1.launch-v2.intear.near".parse().unwrap(),
-                -1400000000000000000000000000000
-            ),
-            ("near".parse().unwrap(), 1561673786768158510659420),
-        ])
+        *balance_changes,
+        BalanceChangeSwap {
+            balance_changes: HashMap::from_iter([
+                (
+                    "salty-1.launch-v2.intear.near".parse().unwrap(),
+                    -1400000000000000000000000000000
+                ),
+                ("near".parse().unwrap(), 1561673786768158510659420),
+            ]),
+            pool_swaps: vec![
+                RawPoolSwap {
+                    pool: "INTEARPLACH-251".to_owned(),
+                    token_in: "salty-1.launch-v2.intear.near".parse().unwrap(),
+                    token_out: "token.intear.near".parse().unwrap(),
+                    amount_in: 1259874000000000000000000000000,
+                    amount_out: 458474816970186009136881522,
+                    referrer: Some("wallet.intear.near".parse().unwrap()),
+                },
+                RawPoolSwap {
+                    pool: "INTEARPLACH-274".to_owned(),
+                    token_in: "token.intear.near".parse().unwrap(),
+                    token_out: "near".parse().unwrap(),
+                    amount_in: 458474816970186009136881522,
+                    amount_out: 1402220029079473844168948,
+                    referrer: Some("wallet.intear.near".parse().unwrap()),
+                },
+                RawPoolSwap {
+                    pool: "INTEARPLACH-283".to_owned(),
+                    token_in: "salty-1.launch-v2.intear.near".parse().unwrap(),
+                    token_out: "token.intear.near".parse().unwrap(),
+                    amount_in: 125987400000000000000000000000,
+                    amount_out: 46896014161874135003763097,
+                    referrer: Some("wallet.intear.near".parse().unwrap()),
+                },
+                RawPoolSwap {
+                    pool: "INTEARPLACH-274".to_owned(),
+                    token_in: "token.intear.near".parse().unwrap(),
+                    token_out: "near".parse().unwrap(),
+                    amount_in: 46896014161874135003763097,
+                    amount_out: 143391731866064782057371,
+                    referrer: Some("wallet.intear.near".parse().unwrap()),
+                },
+                RawPoolSwap {
+                    pool: "INTEARPLACH-283".to_owned(),
+                    token_in: "salty-1.launch-v2.intear.near".parse().unwrap(),
+                    token_out: "token.intear.near".parse().unwrap(),
+                    amount_in: 13998600000000000000000000000,
+                    amount_out: 5094546783224082346990003,
+                    referrer: Some("wallet.intear.near".parse().unwrap()),
+                },
+                RawPoolSwap {
+                    pool: "INTEARPLACH-246".to_owned(),
+                    token_in: "token.intear.near".parse().unwrap(),
+                    token_out: "near".parse().unwrap(),
+                    amount_in: 5094546783224082346990003,
+                    amount_out: 16062025822619884433101,
+                    referrer: Some("wallet.intear.near".parse().unwrap()),
+                },
+            ],
+        }
     );
-    assert_eq!(balance_changes.pool_swaps.len(), 6);
     assert_eq!(
         *context,
         TradeContext {
@@ -3408,4 +3459,70 @@ async fn detects_intear_referral_fees_as_paid_by_the_trader() {
         }
     );
     assert_eq!(referrer.as_deref(), Some("wallet.intear.near"));
+}
+
+#[tokio::test]
+async fn detects_intear_quote_improvement_fees_as_paid_by_the_trader() {
+    let mut indexer = TradeIndexer {
+        handler: TestHandler::default(),
+        is_testnet: false,
+    };
+
+    run_indexer(
+        &mut indexer,
+        TeardataProvider::mainnet(),
+        options(BlockRange::Range {
+            start_inclusive: 225_311_275,
+            end_exclusive: Some(225_311_281),
+        }),
+    )
+    .await
+    .unwrap();
+
+    let [(balance_changes, context, referrer)] = indexer
+        .handler
+        .balance_change_swaps
+        .get(&"intear.near".parse::<AccountId>().unwrap())
+        .unwrap()
+        .as_slice()
+    else {
+        panic!("Expected one trade of intear.near");
+    };
+    // The pool gave 29958178667008851343023733, and dex-frontend.intear.near got the
+    // 278953044274886677805238 above the quote's 29679225622733964665218495
+    assert_eq!(
+        *balance_changes,
+        BalanceChangeSwap {
+            balance_changes: HashMap::from_iter([
+                (
+                    "token.intear.near".parse().unwrap(),
+                    -8888000000000000000000000000
+                ),
+                ("near".parse().unwrap(), 29679225622733964665218495),
+            ]),
+            pool_swaps: vec![RawPoolSwap {
+                pool: "INTEARPLACH-274".to_owned(),
+                token_in: "token.intear.near".parse().unwrap(),
+                token_out: "near".parse().unwrap(),
+                amount_in: 8888000000000000000000000000,
+                amount_out: 29958178667008851343023733,
+                referrer: Some("dex.intear.near".parse().unwrap()),
+            }],
+        }
+    );
+    assert_eq!(
+        *context,
+        TradeContext {
+            trader: "intear.near".parse().unwrap(),
+            block_height: 225311277,
+            block_timestamp_nanosec: 1795122438880526288,
+            transaction_id: "62jaFSgqjLoZVd21vjG2xeJ6xV2pLmXbCX7uUxdGBQnt"
+                .parse()
+                .unwrap(),
+            receipt_id: "4XbE1z1j5rtXmwDDaSJCSSLAv7ZeUL13ruhf97iPwAAg"
+                .parse()
+                .unwrap(),
+        }
+    );
+    assert_eq!(referrer.as_deref(), Some("dex.intear.near"));
 }

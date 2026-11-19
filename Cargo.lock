@@ -17,7 +17,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 [[package]]
 name = "amp-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#af3ec57b035a7eb9d2c335459e3e44592f95fd6b"
+source = "git+https://github.com/INTEARnear/dex#036680638f1ac6a760008d854011c9c223131d92"
 dependencies = [
  "ethnum",
  "intear-dex-common",
@@ -1592,7 +1592,7 @@ dependencies = [
 [[package]]
 name = "intear-dex-common"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#af3ec57b035a7eb9d2c335459e3e44592f95fd6b"
+source = "git+https://github.com/INTEARnear/dex#036680638f1ac6a760008d854011c9c223131d92"
 dependencies = [
  "ethnum",
  "near-sdk",
@@ -1601,7 +1601,7 @@ dependencies = [
 [[package]]
 name = "intear-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#af3ec57b035a7eb9d2c335459e3e44592f95fd6b"
+source = "git+https://github.com/INTEARnear/dex#036680638f1ac6a760008d854011c9c223131d92"
 dependencies = [
  "intear-dex-common",
  "near-sdk",
@@ -4390,7 +4390,7 @@ dependencies = [
 [[package]]
 name = "xyk-dex-types"
 version = "0.1.0"
-source = "git+https://github.com/INTEARnear/dex#af3ec57b035a7eb9d2c335459e3e44592f95fd6b"
+source = "git+https://github.com/INTEARnear/dex#036680638f1ac6a760008d854011c9c223131d92"
 dependencies = [
  "ethnum",
  "intear-dex-common",
